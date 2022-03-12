@@ -7,7 +7,6 @@
 
 
 #Include other functions
-
 include("data_read.jl")
 include("plot_image.jl")
 include("user_model.jl")
@@ -15,32 +14,34 @@ include("PE_POMDP_Def.jl")
 include("ParticleFilter_Def.jl")
 
 #Load point data
-random_data = read_data("./data/random_data.csv")
-random_data_300 = read_data("./data/random_data_300.csv")
-neighborhood_data = read_data("./data/neighborhood_350.csv")
+random_data = read_data("./data/point_sampling_reference/random_data.csv")
+random_data_300 = read_data("./data/point_sampling_reference/random_data_300.csv")
+neighborhood_data = read_data("./data/point_sampling_reference/neighborhood_350.csv")
 
 #User Data
-user_frontdoor = read_data("./data/user_frontdoor.csv")
-user_backdoor = read_data("./data/user_backdoor.csv")
-user_building = read_data("./data/user_building.csv")
-user_road = read_data("./data/user_road.csv")
-test_points = read_data("./data/user_test.csv")
-user_road_edges = read_data("./data/user_roadedges.csv")
+user_frontdoor = read_data("./data/point_sampling_reference/user_frontdoor.csv")
+user_backdoor = read_data("./data/point_sampling_reference/user_backdoor.csv")
+user_building = read_data("./data/point_sampling_reference/user_building.csv")
+user_road = read_data("./data/point_sampling_reference/user_road.csv")
+test_points = read_data("./data/point_sampling_reference/user_test.csv")
+user_road_edges = read_data("./data/point_sampling_reference/user_roadedges.csv")
 points_data = random_data_300 #* (100/30)
 final_points_data = neighborhood_data #
 
 # Points operator has chosen: 
 ### ---  MODIFY TEST CASE HERE  --- ###
 # user_data = user_frontdoor
-filename = "./data/out_images/testimage.png" #Final image for saving
-filename_final = "./data/out_images/test_final_image.png" #Final image for saving
+filename = "./data/point_sampling_reference/out_images/testimage.png" #Final image for saving
+filename_final = "./data/point_sampling_reference/out_images/test_final_image.png" #Final image for saving
 
 #Choose a user model
 user = user_novice
-user_ideal = [0.5,0.45,0.05] #[%building,%road,%other]
-user_data = user_road
+# user_ideal = [0.05,0.9,0.05] #[%building,%road,%other]
+user_ideal = [0.5,0.5,0.05] # frontdoor
+# user_ideal = [0.05,0.5,0.5]
+user_data = user_frontdoor
 #Number of steps before making selection
-num_guess = 1
+num_guess = 15
 
 function _run(user_data,user_ideal_seg,user_ideal_nn,guess_points,final_points,choice_points,user_mode,guess_steps)
     #Input:
@@ -92,8 +93,8 @@ function _run(user_data,user_ideal_seg,user_ideal_nn,guess_points,final_points,c
 
     #Initilize Belief with Particle Filter
     #Create Gaussian Distribution
-    p = 1000 #Number of particles
-    p_sample = 10 #Number of user actions to consider --> Size of action space
+    p = 10000 #Number of particles
+    p_sample = 20 #Number of user actions to consider --> Size of action space
     p_belief = init_PF(user_ideal_seg,user_ideal_nn,p)
 
     accepted_points = []

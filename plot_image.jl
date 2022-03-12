@@ -1,5 +1,6 @@
 using Images
-using Plots
+# using Plots
+using LaTeXStrings
 FILEPATH = "./images/Image1_raw.png"
 USER_INIT = "yellow"
 USER_COLOR = "blue"
