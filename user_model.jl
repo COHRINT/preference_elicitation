@@ -1,6 +1,7 @@
 using Distributions
 novice_accuracy = 0.7
 expert_accuracy = 0.98
+
 novice_certainty = 7
 expert_certainty = 40
 novice_availability = 1.0

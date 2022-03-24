@@ -25,6 +25,7 @@ user_building = read_data("./data/point_sampling_reference/user_building.csv")
 user_road = read_data("./data/point_sampling_reference/user_road.csv")
 test_points = read_data("./data/point_sampling_reference/user_test.csv")
 user_road_edges = read_data("./data/point_sampling_reference/user_roadedges.csv")
+user_corners = read_data("./data/point_sampling_reference/user_corners.csv")
 points_data = random_data_300 #* (100/30)
 final_points_data = neighborhood_data #
 
@@ -36,10 +37,13 @@ filename_final = "./data/point_sampling_reference/out_images/test_final_image.pn
 
 #Choose a user model
 user = user_novice
-# user_ideal = [0.05,0.9,0.05] #[%building,%road,%other]
-user_ideal = [0.5,0.5,0.05] # frontdoor
-# user_ideal = [0.05,0.5,0.5]
-user_data = user_frontdoor
+# user_ideal = [0.05,0.9,0.05] #[%building,%road,%other] # road
+# user_ideal = [0.9,0.05,0.05] # building
+# user_ideal = [0.85,0.05,0.8] # backdoor
+# user_ideal = [0.8,0.5,0.05] # frontdoor
+# user_ideal = [0.05,0.8,0.5]  # road edges
+user_ideal = [0.25, 0.05, 0.75] # corners
+user_data = user_corners
 #Number of steps before making selection
 num_guess = 15
 

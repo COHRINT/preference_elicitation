@@ -1,6 +1,7 @@
 using Images, FileIO
 using MeshViz, Meshes
 import GLMakie: surface
+using Plots
 
 
 # Include necessary files
@@ -81,7 +82,7 @@ function discretize_image(img_path,d_size::Int64)
     return new_image_array, discrete_data
 end
 
-new_img, data_array = discretize_image("./images/airstrip_hand_segmented.png",40)
+new_img, data_array = discretize_image("./images/airstrip_hand_segmented.png",60)
 
 # Fit GMM
 model = fit_gmm(belief,5)
