@@ -78,11 +78,11 @@ end
     λ::Float32 = 0.01f0              # regularization paramater
     batch_size::Int64 = 128        # batch size
     sample_size::Int64 = 10        # sampling size for output    
-    epochs::Int32 = 20             # number of epochs
+    epochs::Int64 = 20             # number of epochs
     seed::Int64 = 0                # random seed
     cuda::Bool = true             # use GPU
     input_dim::Int64 = 28^2        # image size
-    latent_dim::Int32 = 2          # latent dimension
+    latent_dim::Int64 = 2          # latent dimension
     hidden_dim::Int64 = 500        # hidden dimension
     verbose_freq::Int64 = 10       # logging for every verbose_freq iterations
     tblogger::Bool = false        # log training with tensorboard
@@ -138,6 +138,7 @@ function train(; kws...)
         progress = Progress(length(loader))
 
         for (x, _) in loader 
+            println(typeof(x))
             loss, back = Flux.pullback(ps) do
                 model_loss(encoder, decoder, args.λ, x |> device, device)
             end
