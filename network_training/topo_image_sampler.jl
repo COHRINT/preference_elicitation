@@ -1,5 +1,6 @@
 using Images, ImageIO
 using MosaicViews
+using Flux.Data: DataLoader
 
 function get_image_samples(img_path,input_dim,n,batch_size)
     """Function will open an image and create n samples of size sample_pix"""
@@ -15,17 +16,24 @@ function get_image_samples(img_path,input_dim,n,batch_size)
 
     #Pre-allocate matrix
     # img_set = rand(RGB,sample_pix,sample_pix,n)
-    img_set = Array{Float32}(undef,3,sample_pix,sample_pix,n)
+    img_set = Array{Float32}(undef,sample_pix,sample_pix,3,n)
     for s in 1:n
         # Choose a random choice
         s_x = rand(row_dist)
         s_y = rand(col_dist)
-        img_set[:,:,:,s] = channelview(img_main[s_x:s_x+sample_pix-1,s_y:s_y+sample_pix-1])
+        sample = channelview(img_main[s_x:s_x+sample_pix-1,s_y:s_y+sample_pix-1])
+        # Reshaping required to fit in WHCN order
+        img_set[:,:,:,s] = reshape(sample,sample_pix,sample_pix,3)
     end  
     DataLoader(img_set,batchsize=batch_size, shuffle=true)
 end
 
-function convert_to_mosaic(x,y_size)
+function convert_to_mosaic(x,y_size,input_size)
+    # Check image size
+    if size(x)[1]!= 3
+        image_size = Int(sqrt(input_size))
+        x = reshape(x,3,image_size,image_size,:)
+    end
     # Convert to RGB matrix
     RGB_mat = colorview(RGB,x)
     mosaicview(RGB_mat,ncol=y_size)
