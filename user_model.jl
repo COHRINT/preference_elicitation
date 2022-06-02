@@ -10,6 +10,11 @@ expert_availability = 1.0
 test_accuracy = 0.5
 test_certainty = 1
 test_availability = 1.0
+
+oracle_accuracy = 1.0
+oracle_certainty = 50
+oracle_availability = 1.0
+
 struct User_Model
     accuracy::Float64
     certainty::Float64
@@ -19,6 +24,7 @@ end
 user_novice = User_Model(novice_accuracy, novice_certainty,novice_availability)
 user_expert = User_Model(expert_accuracy, expert_certainty,expert_availability)
 user_test = User_Model(test_accuracy, test_certainty,test_availability)
+user_oracle = User_Model(oracle_accuracy, oracle_certainty,oracle_availability)
 
 function sample_new_point(points,ideal_seg,ideal_nn,user,bad_points)
     #Determine point accuracy

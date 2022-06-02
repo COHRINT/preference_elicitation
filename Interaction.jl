@@ -4,7 +4,8 @@
     #User data
     #Random data for suggestions
     #Data to apply suggestions on
-
+using MAT
+using CSV
 
 #Include other functions
 include("data_read.jl")
@@ -36,24 +37,29 @@ filename = "./data/point_sampling_reference/out_images/testimage.png" #Final ima
 filename_final = "./data/point_sampling_reference/out_images/test_final_image.png" #Final image for saving
 
 #Choose a user model
-user = user_novice
+user = user_oracle
 # user_ideal = [0.05,0.9,0.05] #[%building,%road,%other] # road
 # user_ideal = [0.9,0.05,0.05] # building
 # user_ideal = [0.85,0.05,0.8] # backdoor
 # user_ideal = [0.8,0.5,0.05] # frontdoor
-# user_ideal = [0.05,0.8,0.5]  # road edges
-user_ideal = [0.25, 0.05, 0.75] # corners
-user_data = user_corners
+user_ideal = [0.05,0.8,0.5]  # road edges
+# user_ideal = [0.05,0.5,0.5] # road edges, exact
+# user_ideal = [0.25, 0.05, 0.75] # corners
+user_data = user_road_edges
 #Number of steps before making selection
-num_guess = 15
+num_guess = 50
 
 function _run(user_data,user_ideal_seg,user_ideal_nn,guess_points,final_points,choice_points,user_mode,guess_steps)
     #Input:
     #   user_data = [p_x,p_y,radius,%building,%road,%other] Full data vector    #Initial set of user points
-    #   user_ideal = [%building,%road,%other] Desired feature vector            # True ideal input
+    #   user_ideal = [%building,%road,%other] Desired feature vector from segmentation           # True ideal input from segmentation
+    #   user_ideal_seg = [%f1,...,%fn] Desired feature vector from nn components  # True ideal input from neural network
     #   guess_points = [p_x,p_y,radius,%building,%road,%other] Full data vector # Points to be guessed/suggested by algorithm
     #   final_points = [p_x,p_y,radius,%building,%road,%other] Full data vector #Final points to be propagated
     #   choice_points = [p_x,p_y,radius,%building,%road,%other] Full data vector# Points that the user may suggest
+    #   user_mode = user type (i.e. Novice, or expert)
+    #   guess_steps = number of guesses by algorithm
+    #   
     #Output:
     #   p_belief = Particle Filter object --> See ParticleFilter_Def.jl
     #   
@@ -101,6 +107,7 @@ function _run(user_data,user_ideal_seg,user_ideal_nn,guess_points,final_points,c
     p_sample = 20 #Number of user actions to consider --> Size of action space
     p_belief = init_PF(user_ideal_seg,user_ideal_nn,p)
 
+    point_history = []
     accepted_points = []
     user_points = []
     denied_points = []
@@ -136,8 +143,10 @@ function _run(user_data,user_ideal_seg,user_ideal_nn,guess_points,final_points,c
             
             #Record Keeping
             if response=="accept"
+                push!(point_history,(string(suggested_idx),0))
                 push!(accepted_points,string(suggested_idx))
             else
+                push!(point_history,(string(suggested_idx),1))
                 push!(denied_points,string(suggested_idx))
             end
             push!(suggested_points,string(suggested_idx))
@@ -161,10 +170,11 @@ function _run(user_data,user_ideal_seg,user_ideal_nn,guess_points,final_points,c
             best_points_phi[sample] = phi[1]
         end
     end
-    return p_belief,user_points,accepted_points,denied_points,p_belief_history
+    return p_belief,user_points,accepted_points,denied_points,p_belief_history, point_history
 end
 
-belief,user_points,accepted_points,denied_points = _run(user_data,user_ideal,false,points_data,final_points_data,random_data,user,num_guess)
+# belief,user_points,accepted_points,denied_points,belief_hist,point_history = _run(user_data,user_ideal,false,points_data,final_points_data,random_data,user,num_guess)
+
 
 # #Propagate belief onto new image
 #  chosen = final_guess(final_points_data,belief,10)
@@ -185,3 +195,31 @@ belief,user_points,accepted_points,denied_points = _run(user_data,user_ideal,fal
 # final_image = "./images/neighborhood_image.jpg"
 # plot_image(guess_image,[i_x,i_y],[u_x,u_y], [a_x,a_y], [d_x,d_y], filename)
 # plot_image(final_image,[],[],[p_y,p_x],[],filename_final)
+
+# Extract point feature vectors
+# user_data = vcat(user_road_edges[1:2],final_points_data[1:5:16])
+
+# accept_points_f = extract_vector(accepted_points,points_data)
+# denied_points_f = extract_vector(denied_points,points_data)
+# all_points_i = [point_history[i][1] for i in 1:length(point_history)]
+# all_points_responses = [point_history[i][2] for i in 1:length(point_history)]
+# all_points_f = extract_vector(all_points_i,points_data)
+
+# # Save interaction to CSV
+# # matwrite("road_edges_interaction_output_oracle.mat", Dict(
+# # 	"step" => vcat(zeros(5),range(1,num_guess)),
+# #     "point_vectors" => vcat(user_data,accept_points_f,denied_points_f),
+# #     "response" => vcat(ones(5)*-1,zeros(length(accept_points_f))*0,ones(length(denied_points))),
+# # ))
+# matwrite("road_edges_bad_prior.mat", Dict(
+# 	"step" => vcat(zeros(5),range(1,num_guess)),
+#     "point_vectors" => vcat(user_data,all_points_f),
+#     "response" => vcat(ones(5)*-1,all_points_responses),
+# ))
+
+# df = DataFrame(step = [vcat(zeros(5),range(1,num_guess))],
+#                points = [vcat(user_data,accept_points_f,denied_points_f)],
+#                response = [vcat(ones(5)*-1,zeros(length(accept_points_f))*0,ones(length(denied_points)))],
+#                )
+
+# CSV.write("road_edges_interaction_output.csv", df) 

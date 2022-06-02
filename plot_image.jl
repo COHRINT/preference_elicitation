@@ -46,6 +46,17 @@ function extract_xy(points,points_data)
     return u_points_x,u_points_y
 end
 
+function extract_vector(points,points_data)
+    """Function extracts the feature vectors from a provided set of indices"""
+    u_points = []
+    for p in points
+        x = points_data[parse(Int64,p)]
+        push!(u_points,x)
+
+    end
+    return u_points
+end
+
 # x = [50, 100]
 # y = [50, 100]
 
