@@ -6,7 +6,7 @@
 #SBATCH --mail-type=END
 #SBATCH --mail-user=hura1154
 #SBATCH --time=00:02:00
-#SBATCH --partition=alpine
+#SBATCH --partition=shas
 #SBATCH --job-name=vae-trainer
 #SBATCH --output=vae-trainer-%j.out
 
