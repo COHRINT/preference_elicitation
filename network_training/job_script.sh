@@ -5,7 +5,7 @@
 #SBATCH --mail-type=BEGIN
 #SBATCH --mail-type=END
 #SBATCH --mail-user=hura1154
-#SBATCH --time=00:02:00
+#SBATCH --time=00:10:00
 #SBATCH --partition=shas
 #SBATCH --job-name=vae-trainer
 #SBATCH --output=vae-trainer-%j.out
@@ -18,5 +18,7 @@ echo
 julia
 using Pkg
 Pkg.add(["ImageIO","CategoricalArrays","CUDA","Flux","BSON","DrWatson","Images","Logging","Parameters","ProgressMeter","TensorBoardLogger","Random","MosaicViews","BasicPOMCP","POMDPs","ParticleFilters","Distributions","LinearAlgebra","Distances","Statistics","POMDPPolicies"])
+exit()
+pwd
 julia ./projects/hura1154/preference_elicitation/Interaction.jl
 echo
