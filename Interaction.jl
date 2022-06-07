@@ -199,20 +199,21 @@ belief,user_points,accepted_points,denied_points,belief_hist,point_history = _ru
 # Extract point feature vectors
 # user_data = vcat(user_road_edges[1:2],final_points_data[1:5:16])
 
+## MATLAB Data Extraction and Saving
 accept_points_f = extract_vector(accepted_points,points_data)
 denied_points_f = extract_vector(denied_points,points_data)
-# all_points_i = [point_history[i][1] for i in 1:length(point_history)]
-# all_points_responses = [point_history[i][2] for i in 1:length(point_history)]
-# all_points_f = extract_vector(all_points_i,points_data)
+all_points_i = [point_history[i][1] for i in 1:length(point_history)]
+all_points_responses = [point_history[i][2] for i in 1:length(point_history)]
+all_points_f = extract_vector(all_points_i,points_data)
 
 # # Save interaction to CSV
-matwrite("road_edges_interaction_output_oracle.mat", Dict(
-	"step" => vcat(zeros(5),range(1,num_guess)),
-    "point_vectors" => vcat(user_data,accept_points_f,denied_points_f),
-    "response" => vcat(ones(5)*-1,zeros(length(accept_points_f))*0,ones(length(denied_points))),
-))
-# matwrite("road_edges_bad_prior.mat", Dict(
+# matwrite("road_edges_interaction_output_oracle.mat", Dict(
 # 	"step" => vcat(zeros(5),range(1,num_guess)),
-#     "point_vectors" => vcat(user_data,all_points_f),
-#     "response" => vcat(ones(5)*-1,all_points_responses),
+#     "point_vectors" => vcat(user_data,accept_points_f,denied_points_f),
+#     "response" => vcat(ones(5)*-1,zeros(length(accept_points_f))*0,ones(length(denied_points))),
 # ))
+matwrite("road_edges_bad_prior.mat", Dict(
+	"step" => vcat(zeros(5),range(1,num_guess)),
+    "point_vectors" => vcat(user_data,all_points_f),
+    "response" => vcat(ones(5)*-1,all_points_responses),
+))

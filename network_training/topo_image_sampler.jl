@@ -2,7 +2,7 @@ using Images, ImageIO
 using MosaicViews
 using Flux.Data: DataLoader
 
-function get_image_samples(img_path,input_dim,n,batch_size)
+function get_image_samples(img_path,input_dim,n,batch_size,OG_size)
     """Function will open an image and create n samples of size sample_pix"""
     
     # Load image
@@ -25,7 +25,9 @@ function get_image_samples(img_path,input_dim,n,batch_size)
         # Reshaping required to fit in WHCN order
         img_set[:,:,:,s] = reshape(sample,sample_pix,sample_pix,3)
     end  
-    DataLoader(img_set,batchsize=batch_size, shuffle=true)
+    OG_image = deepcopy(img_set[:,:,:,1:OG_size^2])
+
+    return DataLoader(img_set,batchsize=batch_size, shuffle=true), OG_image
 end
 
 function convert_to_mosaic(x,y_size,input_size)
@@ -34,8 +36,9 @@ function convert_to_mosaic(x,y_size,input_size)
         image_size = Int(sqrt(input_size))
         x = reshape(x,3,image_size,image_size,:)
     end
+    x_cpu = cpu(x)
     # Convert to RGB matrix
-    RGB_mat = colorview(RGB,x)
+    RGB_mat = colorview(RGB,x_cpu)
     mosaicview(RGB_mat,ncol=y_size)
 end
 

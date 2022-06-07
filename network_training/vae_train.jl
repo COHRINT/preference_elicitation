@@ -12,7 +12,6 @@ using Flux: @functor, chunk,unsqueeze
 using Flux.Losses: logitbinarycrossentropy
 using Images
 using Logging: with_logger
-using MLDatasets
 using Parameters: @with_kw
 using ProgressMeter: Progress, next!
 using TensorBoardLogger: TBLogger, tb_overwrite
@@ -85,8 +84,8 @@ Decoder(layer_dims::Vector{Int64},CNN_input,CNN_depth::Vector{Int64}) = Chain(
     λ::Float32          = 0.00001f0   # regularization paramater  # lower λ seems better
     batch_size::Int64   = 64      # batch size
     mosaic_size::Int64  = 10       # sampling size for output    
-    epochs::Int64       = 50       # number of epochs
-    samples::Int64      = 200000    # number of image samples
+    epochs::Int64       = 40       # number of epochs
+    samples::Int64      = 50000    # number of image samples
     seed::Int64         = 0        # random seed
     cuda::Bool          = true     # use GPU
     input_dim::Int64    = 64^2     # image size
@@ -112,10 +111,9 @@ function model_loss(encoder, decoder, λ, x, device)
     μ, logσ, decoder_z = reconstuct(encoder, decoder, x, device)
     len = size(x)[end]
     # KL-divergence
-    # kl_q_p = 0.5f0 * sum(@. (exp(2f0 * logσ) + μ^2 -1f0 - 2f0 * logσ)) / len
-    kl_q_p = 0.5 * sum(@. (exp(2 * logσ) + μ^2 -1 - 2 * logσ)) / len
+    kl_q_p = 0.5f0 * sum(@. (exp(2f0 * logσ) + μ^2 -1f0 - 2f0 * logσ)) / len
 
-    # println("Logitbinary",size(decoder_z),size(x))
+    #  println("Logitbinary",size(decoder_z),typeof(decoder_z),size(x))
     logp_x_z = -logitbinarycrossentropy(decoder_z, x, agg=sum) / len
     # regularization
     reg = λ * sum(x->sum(x.^2), Flux.params(decoder))
@@ -142,8 +140,8 @@ function train(; kws...)
 
     # load image samples
     base_path = "./images/Boulder_flatirons_topoV1_cropped.jfif"
-    loader = get_image_samples(base_path,args.input_dim,args.samples,args.batch_size)
-    
+    loader, original_image = get_image_samples(base_path,args.input_dim,args.samples,args.batch_size,args.mosaic_size)
+    typeof(loader)
     # initialize encoder and decoder
     encoder = Encoder(args.layer_dims,args.CNN_dims,args.CNN_depth) |> device
     decoder = Decoder(args.layer_dims,args.CNN_dims,args.CNN_depth) |> device
@@ -175,8 +173,8 @@ function train(; kws...)
     # image = convert_to_image(original, args.mosaic_size)
     # image_path = joinpath(args.save_path, "original.png")
     # save(image_path, image)
-    original_image = deepcopy(loader.data[:,:,:,1:args.mosaic_size^2]) |> device 
-    # original_data = original_image |> device
+    # original_image = deepcopy(loader.data[:,:,:,1:args.mosaic_size^2]) |> device 
+    original_image = original_image |> device
     # original = original |> device
     image = convert_to_mosaic(original_image,args.mosaic_size,args.input_dim)
     image_path = joinpath(args.save_path, "original.png")
@@ -185,6 +183,7 @@ function train(; kws...)
     # training
     train_steps = 0
     @info "Start Training, total $(args.epochs) epochs"
+    CUDA.allowscalar(true)
     for epoch = 1:args.epochs
         @info "Epoch $(epoch)"
         progress = Progress(length(loader))
