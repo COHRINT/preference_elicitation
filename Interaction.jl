@@ -213,7 +213,7 @@ all_points_f = extract_vector(all_points_i,points_data)
 #     "response" => vcat(ones(5)*-1,zeros(length(accept_points_f))*0,ones(length(denied_points))),
 # ))
 matwrite("road_edges_bad_prior.mat", Dict(
-	"step" => vcat(zeros(5),range(1,num_guess)),
+	"step" => vcat(zeros(5),range(1,num_guess,num_guess)),
     "point_vectors" => vcat(user_data,all_points_f),
     "response" => vcat(ones(5)*-1,all_points_responses),
 ))
