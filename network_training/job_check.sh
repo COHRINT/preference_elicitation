@@ -6,7 +6,7 @@
 #SBATCH --mail-user=hura1154
 #SBATCH --time=20:00:00
 #SBATCH --partition=shas
-#SBATCH --job-name=vae-trainer
+#SBATCH --job-name=job_test
 #SBATCH --output=vae-trainer-%j.out
 
 module purge
@@ -15,5 +15,4 @@ module load cuda/10.1
 
 echo
 julia ./network_training/package_loader.jl
-julia ./network_training/vae_train.jl
 echo
