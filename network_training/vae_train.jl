@@ -82,10 +82,10 @@ Decoder(layer_dims::Vector{Int64},CNN_input,CNN_depth::Vector{Int64}) = Chain(
 @with_kw struct Args
     η::Float64          = 1e-2     # learning rate
     λ::Float32          = 0.00001f0   # regularization paramater  # lower λ seems better
-    batch_size::Int64   = 64      # batch size
+    batch_size::Int64   = 1000      # batch size
     mosaic_size::Int64  = 10       # sampling size for output    
     epochs::Int64       = 40       # number of epochs
-    samples::Int64      = 50000    # number of image samples
+    samples::Int64      = 1000000    # number of image samples
     seed::Int64         = 0        # random seed
     cuda::Bool          = true     # use GPU
     input_dim::Int64    = 64^2     # image size
@@ -93,7 +93,7 @@ Decoder(layer_dims::Vector{Int64},CNN_input,CNN_depth::Vector{Int64}) = Chain(
     layer_dims::Vector{Int64} = [1024,512,256]
     CNN_dims::Vector{Tuple{Int64,Int64}} = [(3,3),(3,3),(3,3),(3,3),(3,3)] # Size of Convolutional layers
     CNN_depth::Vector{Int64} = [4,4,8,8,16] # Depth of convolutional layers
-    verbose_freq::Int64 = 10       # logging for every verbose_freq iterations
+    verbose_freq::Int64 = 100       # logging for every verbose_freq iterations
     tblogger::Bool      = false    # log training with tensorboard
     save_path           = "output" # results path
 end

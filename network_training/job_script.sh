@@ -11,7 +11,7 @@
 
 module purge
 module load julia/1.6.0
-module load cuda/11.2
+module load cuda/10.1
 
 echo
 julia ./preference_elicitation/network_training/package_loader.jl
