@@ -14,6 +14,6 @@ module load julia/1.6.0
 module load cuda/10.1
 
 echo
-julia ./preference_elicitation/network_training/package_loader.jl
-julia ./preference_elicitation/Interaction.jl
+julia ./network_training/package_loader.jl
+julia ./Interaction.jl
 echo
