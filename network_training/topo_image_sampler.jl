@@ -11,8 +11,8 @@ function get_image_samples(img_path,input_dim,n,batch_size,OG_size)
 
     #Create distribution to sample from
     sample_pix = Int(sqrt(input_dim))
-    row_dist = range(1,row-sample_pix)
-    col_dist = range(1,col-sample_pix)
+    row_dist = range(1,row-sample_pix,step=1)
+    col_dist = range(1,col-sample_pix,step=1)
 
     #Pre-allocate matrix
     # img_set = rand(RGB,sample_pix,sample_pix,n)
