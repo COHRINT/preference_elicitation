@@ -10,7 +10,7 @@ using DrWatson: struct2dict
 using Flux
 using Flux: @functor, chunk,unsqueeze
 using Flux.Losses: logitbinarycrossentropy
-using Images
+using Images, ImageIO
 using Logging: with_logger
 using Parameters: @with_kw
 using ProgressMeter: Progress, next!
@@ -52,7 +52,7 @@ Encoder(layer_dims::Vector{Int64}, CNN_input,CNN_depth::Vector{Int64}) = Encoder
 
 function (encoder::Encoder)(x)
     h = encoder.linear_1(
-        flatten(
+        Flux.flatten(
         MaxPool((2,2))(
             encoder.conv_5(
         MaxPool((2,2))(
@@ -82,10 +82,10 @@ Decoder(layer_dims::Vector{Int64},CNN_input,CNN_depth::Vector{Int64}) = Chain(
 @with_kw struct Args
     η::Float64          = 1e-2     # learning rate
     λ::Float32          = 0.00001f0   # regularization paramater  # lower λ seems better
-    batch_size::Int64   = 1000      # batch size
+    batch_size::Int64   = 50      # batch size
     mosaic_size::Int64  = 10       # sampling size for output    
     epochs::Int64       = 40       # number of epochs
-    samples::Int64      = 1000000    # number of image samples
+    samples::Int64      = 100000    # number of image samples
     seed::Int64         = 0        # random seed
     cuda::Bool          = true     # use GPU
     input_dim::Int64    = 64^2     # image size
