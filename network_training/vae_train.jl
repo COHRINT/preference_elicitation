@@ -40,10 +40,10 @@ end
 @functor Encoder
     
 Encoder(layer_dims::Vector{Int64}, CNN_input,CNN_depth::Vector{Int64}) = Encoder(
-    Conv(CNN_input[1], 3 => CNN_depth[1], relu; stride = 1, pad = SamePad()), # conv_1
-    Conv(CNN_input[2], CNN_depth[1] => CNN_depth[2], relu; stride = 1, pad = SamePad()),# conv_2
-    Conv(CNN_input[3], CNN_depth[2] => CNN_depth[3], relu; stride = 1, pad = SamePad()),# conv_3
-    Conv(CNN_input[4], CNN_depth[3] => CNN_depth[4], relu; stride = 1, pad = SamePad()),# conv_4
+    Conv(CNN_input[1], 3 => CNN_depth[1], relu; stride = 1), # conv_1
+    Conv(CNN_input[2], CNN_depth[1] => CNN_depth[2], relu; stride = 1),# conv_2
+    Conv(CNN_input[3], CNN_depth[2] => CNN_depth[3], relu; stride = 1),# conv_3
+    Conv(CNN_input[4], CNN_depth[3] => CNN_depth[4], relu; stride = 1),# conv_4
     Conv(CNN_input[5], CNN_depth[4] => CNN_depth[5], relu; stride = 1, pad = SamePad()),# conv_5
     Dense(layer_dims[1],layer_dims[2],relu),     #  linear_1
     Dense(layer_dims[2],layer_dims[end]),        # μ
@@ -68,12 +68,12 @@ Decoder(layer_dims::Vector{Int64},CNN_input,CNN_depth::Vector{Int64}) = Chain(
     Dense(layer_dims[3], layer_dims[2],tanh),
     Dense(layer_dims[2], layer_dims[1],relu),
     softmax,
-    x->reshape(x,8,8,CNN_depth[end],:),
+    x->reshape(x,6,6,CNN_depth[end],:),
     Upsample((2,2)),
     Conv(CNN_input[5], CNN_depth[5] => CNN_depth[4], relu; stride = 1, pad=SamePad()),
     Upsample((2,2)),
-    Conv(CNN_input[4], CNN_depth[4] => CNN_depth[3], relu; stride = 1, pad=SamePad()),
-    Conv(CNN_input[3], CNN_depth[3] => CNN_depth[2], relu; stride = 1, pad=SamePad()),
+    Conv(CNN_input[4], CNN_depth[4] => CNN_depth[3], relu; stride = 1),
+    Conv(CNN_input[3], CNN_depth[3] => CNN_depth[2], relu; stride = 1),
     Upsample((2,2)),
     Conv(CNN_input[2], CNN_depth[2] => CNN_depth[1], relu; stride = 1, pad=SamePad()),
     Conv(CNN_input[1], CNN_depth[1] => 3, sigmoid; stride = 1, pad=SamePad())
@@ -82,18 +82,18 @@ Decoder(layer_dims::Vector{Int64},CNN_input,CNN_depth::Vector{Int64}) = Chain(
 @with_kw struct Args
     η::Float64          = 1e-2     # learning rate
     λ::Float32          = 0.00001f0   # regularization paramater  # lower λ seems better
-    batch_size::Int64   = 50      # batch size
+    batch_size::Int64   = 76      # batch size
     mosaic_size::Int64  = 10       # sampling size for output    
     epochs::Int64       = 40       # number of epochs
-    samples::Int64      = 100000    # number of image samples
+    samples::Int64      = 300000    # number of image samples
     seed::Int64         = 0        # random seed
     cuda::Bool          = true     # use GPU
     input_dim::Int64    = 64^2     # image size
     input_channels::Int64 = 3      # Number of channels on the input image
-    layer_dims::Vector{Int64} = [1024,512,256]
+    layer_dims::Vector{Int64} = [576,288,144]
     CNN_dims::Vector{Tuple{Int64,Int64}} = [(3,3),(3,3),(3,3),(3,3),(3,3)] # Size of Convolutional layers
-    CNN_depth::Vector{Int64} = [4,4,8,8,16] # Depth of convolutional layers
-    verbose_freq::Int64 = 100       # logging for every verbose_freq iterations
+    CNN_depth::Vector{Int64} = [6,6,12,12,16] # Depth of convolutional layers
+    verbose_freq::Int64 = 20000       # logging for every verbose_freq iterations
     tblogger::Bool      = false    # log training with tensorboard
     save_path           = "output" # results path
 end

@@ -1,24 +1,33 @@
 using Flux
 
-CNN_input = CNN_input = [(3,3),(3,3),(3,3),(3,3),(3,3)]
-CNN_depth = [4,4,8,8,16]
+CNN_input = [(3,3),(3,3),(3,3),(3,3),(3,3)]
+CNN_depth = [6,6,12,12,16]
 
 # Encoder Example
 r1 = rand(Float32,64,64,3,10)
-m = Chain(Conv(CNN_input[1], 3 => CNN_depth[1], relu; stride = 1, pad = SamePad()), # conv_1
-Conv(CNN_input[2], CNN_depth[1] => CNN_depth[2], relu; stride = 1, pad = SamePad()),# conv_2
-MaxPool((2,2)),
-Conv(CNN_input[3], CNN_depth[2] => CNN_depth[3], relu; stride = 1, pad = SamePad()),# conv_2
-Conv(CNN_input[4], CNN_depth[3] => CNN_depth[4], relu; stride = 1, pad = SamePad()),# conv_2
-MaxPool((2,2)),
-Conv(CNN_input[5], CNN_depth[4] => CNN_depth[5], relu; stride = 1, pad = SamePad()),# conv_2
-MaxPool((2,2))
+m = Chain(
+    Conv(CNN_input[1], 3 => CNN_depth[1], relu; stride = 1,pad=SamePad()), # conv_1
+    Conv(CNN_input[2], CNN_depth[1] => CNN_depth[2], relu; stride = 1,pad=SamePad()),# conv_2
+    MaxPool((2,2)),
+    Conv(CNN_input[3], CNN_depth[2] => CNN_depth[3], relu; stride = 1),# conv_2
+    Conv(CNN_input[4], CNN_depth[3] => CNN_depth[4], relu; stride = 1),# conv_2
+    MaxPool((2,2)),
+    Conv(CNN_input[5], CNN_depth[4] => CNN_depth[5], relu; stride = 1, pad = SamePad()),# conv_2
+    MaxPool((2,2))
 )
+d = Chain(
+    Conv(CNN_input[2], CNN_depth[2] => CNN_depth[1],relu; stride = 1, pad=SamePad()),
+    Conv(CNN_input[1],CNN_depth[1] => 3, relu; stride = 1,pad=SamePad()))
 
 mod = r1 |> m 
 println("Pre-Flattened Size)", size(mod))
-mod_flat = flatten(mod)
+mod_flat = Flux.flatten(mod)
 println("Flattened Size", size(mod_flat))
+
+# encode = r1 |> m
+# decode = encode |> d
+# println("Size-encoded", size(encode))
+# println("Size-decoded",size(decode))
 
 # Decoder Example
 d = Chain(Dense(1024,1024),
@@ -32,9 +41,9 @@ function apply_chain(x,c)
     c |> gpu
     x |> c
 end
-r2 = Float32.(rand(1024,10))
+# r2 = Float32.(rand(1024,10))
 # d |> gpu
 # r2 |> gpu
 # mod_d = r2 |> d
 
-println("Decoded Size", size(apply_chain(r2,d)))
+# println("Decoded Size", size(apply_chain(r2,d)))
