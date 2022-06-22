@@ -33,55 +33,112 @@ struct Encoder
     conv_3
     conv_4
     conv_5
+    conv_6
+    conv_7
+    conv_8
     linear_1
     μ
     logσ
+    depth
+    input
+    dims
 end
 @functor Encoder
     
 Encoder(layer_dims::Vector{Int64}, CNN_input,CNN_depth::Vector{Int64}) = Encoder(
-    Conv(CNN_input[1], 3 => CNN_depth[1], relu; stride = 1), # conv_1
-    Conv(CNN_input[2], CNN_depth[1] => CNN_depth[2], relu; stride = 1),# conv_2
-    Conv(CNN_input[3], CNN_depth[2] => CNN_depth[3], relu; stride = 1),# conv_3
-    Conv(CNN_input[4], CNN_depth[3] => CNN_depth[4], relu; stride = 1),# conv_4
+    Conv(CNN_input[1], 3 => CNN_depth[1], relu; stride = 1, pad=SamePad()), # conv_1
+    Conv(CNN_input[2], CNN_depth[1] => CNN_depth[2], relu; stride = 1, pad=SamePad()),# conv_2
+    Conv(CNN_input[3], CNN_depth[2] => CNN_depth[3], relu; stride = 1, pad=SamePad()),# conv_3
+    Conv(CNN_input[4], CNN_depth[3] => CNN_depth[4], relu; stride = 1, pad=SamePad()),# conv_4
     Conv(CNN_input[5], CNN_depth[4] => CNN_depth[5], relu; stride = 1, pad = SamePad()),# conv_5
+    Conv(CNN_input[6], CNN_depth[5] => CNN_depth[6], relu; stride = 1, pad = SamePad()),# conv_6
+    Conv(CNN_input[7], CNN_depth[6] => CNN_depth[7], relu; stride = 1, pad = SamePad()), #conv_7
+    Conv(CNN_input[8], CNN_depth[7] => CNN_depth[8], relu; stride = 1, pad = SamePad()),# conv_8
     Dense(layer_dims[1],layer_dims[2],relu),     #  linear_1
     Dense(layer_dims[2],layer_dims[end]),        # μ
-    Dense(layer_dims[2],layer_dims[end])        # logσ
+    Dense(layer_dims[2],layer_dims[end]),        # logσ
+    CNN_depth |>gpu,                        # depth
+    CNN_input |>gpu,                        # input
+    layer_dims|>gpu                        # dims
 )
 
 function (encoder::Encoder)(x)
-    h = encoder.linear_1(
-        Flux.flatten(
-        MaxPool((2,2))(
-            encoder.conv_5(
-        MaxPool((2,2))(
-            encoder.conv_4(
-            encoder.conv_3(
-        MaxPool((2,2))(
-            encoder.conv_2(
-            encoder.conv_1(x))))))))))
+    c = Chain(
+        encoder.conv_1,
+        encoder.conv_2,
+        #BatchNorm(encoder.depth[2], relu;affine = true, track_stats = true,ϵ=1f-5, momentum= 0.1f0),
+        MaxPool((2,2)),
+        encoder.conv_3,
+        encoder.conv_4,
+        #BatchNorm(encoder.depth[4], relu;affine = true, track_stats = true,ϵ=1f-5, momentum= 0.1f0),
+        MaxPool((2,2)),
+        encoder.conv_5,
+        encoder.conv_6,
+        #BatchNorm(encoder.depth[6], relu;affine = true, track_stats = true,ϵ=1f-5, momentum= 0.1f0),
+        MaxPool((2,2)),
+        encoder.conv_7,
+        encoder.conv_8,
+        # BatchNorm(encoder.depth[8], relu;affine = true, track_stats = true,ϵ=1f-5, momentum= 0.1f0),
+        MaxPool((2,2)),
+        Flux.flatten,
+        encoder.linear_1,
+        
+    )
+    h = x |> c |> BatchNorm(256)
+    # println(typeof(h),size(h))
     encoder.μ(h), encoder.logσ(h)
 end
 
+# function (encoder::Encoder)(x)
+#     h = Flux.f64(BatchNorm(encoder.dims[2], relu))(
+#         encoder.linear_1(
+#         Flux.flatten(
+#         MaxPool((2,2))(
+#         Flux.f64(BatchNorm(encoder.depth[8], relu))(
+#             encoder.conv_8(
+#             encoder.conv_7(
+#         MaxPool((2,2))(
+#         Flux.f64(BatchNorm(encoder.depth[6], relu))(
+#             encoder.conv_6(
+#             encoder.conv_5(
+#         MaxPool((2,2))(
+#         Flux.f64(BatchNorm(encoder.depth[4], relu))(
+#             encoder.conv_4(
+#             encoder.conv_3(
+#         MaxPool((2,2))(
+#         Flux.f64(BatchNorm(encoder.depth[2], relu))(
+#             encoder.conv_2(
+#             encoder.conv_1(x)))))))))))))))))))
+#     encoder.μ(h), encoder.logσ(h)
+# end
+
 Decoder(layer_dims::Vector{Int64},CNN_input,CNN_depth::Vector{Int64}) = Chain(
     Dense(layer_dims[3], layer_dims[2],tanh),
+    Flux.f64(BatchNorm(layer_dims[2], relu)),
     Dense(layer_dims[2], layer_dims[1],relu),
-    softmax,
-    x->reshape(x,6,6,CNN_depth[end],:),
+    Flux.f64(BatchNorm(layer_dims[1], relu)),
+    x->reshape(x,4,4,CNN_depth[end],:),
     Upsample((2,2)),
+    Conv(CNN_input[8], CNN_depth[8] => CNN_depth[7], relu; stride = 1, pad = SamePad()), #conv_7
+    Conv(CNN_input[7], CNN_depth[7] => CNN_depth[6], relu; stride = 1, pad = SamePad()),# conv_8
+    Flux.f64(BatchNorm(CNN_depth[6], relu)),
+    Upsample((2,2)),
+    Conv(CNN_input[6], CNN_depth[6] => CNN_depth[5], relu; stride = 1, pad=SamePad()),
     Conv(CNN_input[5], CNN_depth[5] => CNN_depth[4], relu; stride = 1, pad=SamePad()),
+    Flux.f64(BatchNorm(CNN_depth[4], relu)),
     Upsample((2,2)),
-    Conv(CNN_input[4], CNN_depth[4] => CNN_depth[3], relu; stride = 1),
-    Conv(CNN_input[3], CNN_depth[3] => CNN_depth[2], relu; stride = 1),
+    Conv(CNN_input[4], CNN_depth[4] => CNN_depth[3], relu; stride = 1, pad=SamePad()),
+    Conv(CNN_input[3], CNN_depth[3] => CNN_depth[2], relu; stride = 1, pad=SamePad()),
+    Flux.f64(BatchNorm(CNN_depth[2], relu)),
     Upsample((2,2)),
     Conv(CNN_input[2], CNN_depth[2] => CNN_depth[1], relu; stride = 1, pad=SamePad()),
-    Conv(CNN_input[1], CNN_depth[1] => 3, sigmoid; stride = 1, pad=SamePad())
+    Conv(CNN_input[1], CNN_depth[1] => 3, relu; stride = 1, pad=SamePad()),
+    Flux.f64(BatchNorm(3,sigmoid))
 )
 # arguments for the `train` function 
 @with_kw struct Args
-    η::Float64          = 1e-2     # learning rate
-    λ::Float32          = 0.00001f0   # regularization paramater  # lower λ seems better
+    η::Float32          = 1e-2     # learning rate
+    λ::Float32          = 0.001f0   # regularization paramater  # lower λ seems better
     batch_size::Int64   = 76      # batch size
     mosaic_size::Int64  = 10       # sampling size for output    
     epochs::Int64       = 40       # number of epochs
@@ -90,11 +147,11 @@ Decoder(layer_dims::Vector{Int64},CNN_input,CNN_depth::Vector{Int64}) = Chain(
     cuda::Bool          = true     # use GPU
     input_dim::Int64    = 64^2     # image size
     input_channels::Int64 = 3      # Number of channels on the input image
-    layer_dims::Vector{Int64} = [576,288,144]
-    CNN_dims::Vector{Tuple{Int64,Int64}} = [(3,3),(3,3),(3,3),(3,3),(3,3)] # Size of Convolutional layers
-    CNN_depth::Vector{Int64} = [6,6,12,12,16] # Depth of convolutional layers
+    layer_dims::Vector{Int64} = [512,256,128]
+    CNN_dims::Vector{Tuple{Int64,Int64}} = [(3,3),(3,3),(3,3),(3,3),(3,3),(3,3),(3,3),(3,3)] # Size of Convolutional layers
+    CNN_depth::Vector{Int64} = [6,6,12,12,24,24,32,32] # Depth of convolutional layers
     verbose_freq::Int64 = 20000       # logging for every verbose_freq iterations
-    tblogger::Bool      = false    # log training with tensorboard
+    tblogger::Bool      = true    # log training with tensorboard
     save_path           = "output" # results path
 end
 
@@ -139,7 +196,7 @@ function train(; kws...)
 
 
     # load image samples
-    base_path = "./images/Boulder_flatirons_topoV1_cropped.jfif"
+    base_path = "./images/Walker_ranch_specific_topo.jfif"
     loader, original_image = get_image_samples(base_path,args.input_dim,args.samples,args.batch_size,args.mosaic_size)
     typeof(loader)
     # initialize encoder and decoder
@@ -155,6 +212,9 @@ function train(; kws...)
                     encoder.conv_3,
                     encoder.conv_4,
                     encoder.conv_5,
+                    encoder.conv_6,
+                    encoder.conv_7,
+                    encoder.conv_8,
                     encoder.linear_1,
                     encoder.μ, encoder.logσ, decoder)
 
