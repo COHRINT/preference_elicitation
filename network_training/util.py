@@ -52,3 +52,4 @@ def sample_image(filename, save_path, set_name, n_samples, sample_size):
         path = str(save_path + set_name + str(s) + ".jpeg")
         # print(path)
         image.imsave(path, new_img)
+

@@ -21,8 +21,10 @@ def load_batch(batch_idx, istrain):
     image_set_name = "Walker_range_small"
     if istrain:
         template = str('../../training_sample_set/train/' + image_set_name + '%s.jpeg')
+
     else:
         template = str('../../training_sample_set/test/' + image_set_name + '%s.jpeg')
+
     picture_set = [str(batch_idx * model.batch_size + i) for i in range(model.batch_size)]
     data = []
     for idx in picture_set:
@@ -33,7 +35,7 @@ def load_batch(batch_idx, istrain):
 
 
 class VAE(nn.Module):
-    def __init__(self, nc, ngf, ndf, latent_variable_size, batch_size, image_size):
+    def __init__(self, nc, ngf, ndf, latent_variable_size, batch_size, test_size, image_size):
         super(VAE, self).__init__()
 
         self.nc = nc
@@ -42,6 +44,7 @@ class VAE(nn.Module):
         self.img_sz = image_size
         self.latent_variable_size = latent_variable_size
         self.batch_size = batch_size
+        self.test_size = test_size
 
         # encoder
         self.e1 = nn.Conv2d(nc, ndf, 4, stride=2, padding=1)
@@ -179,16 +182,16 @@ def test(epoch):
     test_loss = 0
     for batch_idx in test_loader:
         data = load_batch(batch_idx, False)
-        data = Variable(data, volatile=True)
-        if args.cuda:
-            data = data.cuda()
-        recon_batch, mu, logvar = model(data)
-        test_loss += loss_function(recon_batch, data, mu, logvar).data[0]
+        with torch.no_grad():
+            if args.cuda:
+                data = data.cuda()
+            recon_batch, mu, logvar = model(data)
+            test_loss += loss_function(recon_batch, data, mu, logvar).data
 
-        torchvision.utils.save_image(data.data, '../output/Epoch_{}_data.jpg'.format(epoch), nrow=8, padding=2)
-        torchvision.utils.save_image(recon_batch.data, '../output/Epoch_{}_recon.jpg'.format(epoch), nrow=8, padding=2)
+            torchvision.utils.save_image(data.data, '../output/Epoch_{}_data.jpg'.format(epoch), nrow=8, padding=2)
+            torchvision.utils.save_image(recon_batch.data, '../output/Epoch_{}_recon.jpg'.format(epoch), nrow=8, padding=2)
 
-    test_loss /= (len(test_loader) * 128)
+    test_loss /= (len(test_loader) * model.batch_size)
     print('====> Test set loss: {:.4f}'.format(test_loss))
     return test_loss
 
@@ -263,8 +266,10 @@ def rand_faces(num=5):
 
 
 def load_last_model():
-    models = glob('../models/*.pth')
-    model_ids = [(int(f.split('_')[1]), f) for f in models]
+    models = glob('../network_training/models/*.pth')
+    # print(models)
+    model_ids = [(int(f.split('_')[2]), f) for f in models]
+    # print(model_ids)
     start_epoch, last_cp = max(model_ids, key=lambda item: item[0])
     print('Last checkpoint: ', last_cp)
     model.load_state_dict(torch.load(last_cp))
@@ -275,19 +280,36 @@ def engage_training(resume):
     if resume:
         start_epoch, _ = load_last_model()
     else:
-        start_epoch = 1
+        start_epoch = 0
 
     for epoch in range(start_epoch + 1, start_epoch + args.epochs + 1):
         train_loss = train(epoch)
         test_loss = test(epoch)
         torch.save(model.state_dict(),
-                   '../models/Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'.format(epoch, train_loss, test_loss))
+                   '../network_training/models/Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'.format(epoch, train_loss, test_loss))
+        # mosaic_validation(epoch, 100)
 
 
 def last_model_to_cpu():
     _, last_cp = load_last_model()
     model.cpu()
     torch.save(model.state_dict(), '../models/cpu_' + last_cp.split('/')[-1])
+
+
+def mosaic_validation(epoch, mosaic_size):
+    # Load first image batch
+    data = load_batch(1, False)
+    data = Variable(data, volatile=True)
+    if args.cuda:
+        data = data.cuda()
+    recon_batch, mu, logvar = model(data)
+
+    # Combine into a single image
+    target_set = data.view(mosaic_size**2, model.nc, model.img_sz, model.img_sz)
+    im = Image.fromarray(target_set)
+    im.resize((model.img_sz*mosaic_size,model.img_sz*mosaic_size))
+    # Save image
+    im.save("../output/Epoch_{}.jpeg".format(epoch))
 
 
 # Training design #################################################################################################
@@ -313,13 +335,15 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-train_loader = range(1200)
+train_loader = range(2343)
+# train_loader = range(100)
 test_loader = range(40)
 
-model = VAE(nc=3, ngf=32, ndf=32, latent_variable_size=500, batch_size=250, image_size=64)
+model = VAE(nc=3, ngf=32, ndf=32, latent_variable_size=500, batch_size=128, test_size=100, image_size=64)
 
 if args.cuda:
     model.cuda()
+    print("Running with GPU")
 
 reconstruction_function = nn.BCELoss()
 reconstruction_function.size_average = False
@@ -327,13 +351,13 @@ reconstruction_function.size_average = False
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 if __name__ == '__main__':
     # Image sampling and saving
-    img_path = "../images/Walker_ranch_specific_topo.jfif"
+    img_path = "../images/Walker_ranch_topo.jfif"
     save_path = "../../training_sample_set/test/"
-    samples = 100
+    samples = 10010
     sample_size = 64
     name = "Walker_range_small"
     # sample_image(img_path, save_path, name, samples, sample_size)
-    engage_training(False)
+    engage_training(True)
     # train()
     # last_model_to_cpu()
     # load_last_model()
