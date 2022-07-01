@@ -312,20 +312,19 @@ parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                     help='how many batches to wait before logging training status')
 
 args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
+args.cuda = torch.cuda.is_available()
 
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-# train_loader = range(2343)
-# train_loader = range(100)
-# test_loader = range(40)
+
 bite_size = 128
 model = VAE(nc=3, ngf=32, ndf=32, latent_variable_size=500, batch_size=bite_size, test_size=100, image_size=64)
 if args.cuda:
     model.cuda()
+    print("Training with GPU")
 
 
 reconstruction_function = nn.BCELoss()

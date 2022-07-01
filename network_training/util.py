@@ -1,6 +1,8 @@
 import pickle as pk
 import sys
 import random
+
+import torchvision.transforms.functional
 from torch.utils.data import Dataset
 from matplotlib import image
 from PIL import Image as PIL_image
@@ -73,8 +75,10 @@ class CustomImageDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, str(self.data_name+str(idx)+'.jpeg'))
-        im = read_image(img_path)
+        im = read_image(img_path, mode=torchvision.io.ImageReadMode.RGB)
         im = im.float()
+        pass
+        # im = torchvision.transforms.functional.to_tensor(im)
         if self.transform:
             im = self.transform(im)
         if self.target_transform:
