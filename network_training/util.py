@@ -1,8 +1,14 @@
 import pickle as pk
 import sys
 import random
+from torch.utils.data import Dataset
 from matplotlib import image
+from PIL import Image as PIL_image
 import numpy as np
+import os
+from torchvision.io import read_image
+from torchvision import transforms
+import glob
 
 
 ############################################################
@@ -52,4 +58,26 @@ def sample_image(filename, save_path, set_name, n_samples, sample_size):
         path = str(save_path + set_name + str(s) + ".jpeg")
         # print(path)
         image.imsave(path, new_img)
+
+
+class CustomImageDataset(Dataset):
+    def __init__(self, img_dir, name, transform=None, target_transform=None):
+        self.img_dir = img_dir
+        self.data_name = name
+        self.transform = transform
+        # self.transform = transforms.ToTensor()
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return len(glob.glob(self.img_dir+"/*"))
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.img_dir, str(self.data_name+str(idx)+'.jpeg'))
+        im = read_image(img_path)
+        im = im.float()
+        if self.transform:
+            im = self.transform(im)
+        if self.target_transform:
+            label = self.target_transform()
+        return im
 
