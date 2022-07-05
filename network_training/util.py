@@ -44,6 +44,20 @@ def save_pickle(data_object, filename):
     pk.dump(data_object, pickle_file)
     pickle_file.close()
 
+############################################################
+### IO
+############################################################
+
+
+def get_image_metrics(filename):
+    im = PIL_image.open(filename)
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    im_tr = transform(im)
+    mean, std = im_tr.mean([1, 2]), im_tr.std([1, 2])
+    return mean, std
+
 
 def sample_image(filename, save_path, set_name, n_samples, sample_size):
     """Randomly samples and saves images to a given directory."""
@@ -75,9 +89,14 @@ class CustomImageDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, str(self.data_name+str(idx)+'.jpeg'))
-        im = read_image(img_path, mode=torchvision.io.ImageReadMode.RGB)
-        im = im.float()
-        pass
+        im = PIL_image.open(img_path)
+        im = torchvision.transforms.functional.to_tensor(im)
+        mean = [0.6785, 0.6938, 0.6454]
+        std = [0.1191, 0.1265, 0.1272]
+        im = torchvision.transforms.functional.normalize(im,mean,std)
+        # im = read_image(img_path, mode=torchvision.io.ImageReadMode.RGB)
+        # im = read_image(img_path)
+        # im = im.float()
         # im = torchvision.transforms.functional.to_tensor(im)
         if self.transform:
             im = self.transform(im)

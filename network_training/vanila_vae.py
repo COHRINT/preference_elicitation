@@ -7,6 +7,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 import torchvision
+from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import time
@@ -14,6 +15,7 @@ from glob import glob
 from util import *
 import numpy as np
 from PIL import Image
+
 
 totensor = transforms.ToTensor()
 
@@ -166,7 +168,7 @@ def train(epoch, loader):
     batch_idx = 0
     for data in loader:
         # data = totensor(data)
-        if args.cuda:
+        if torch.cuda.is_available():
             data = data.cuda()
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
@@ -181,6 +183,9 @@ def train(epoch, loader):
                 epoch, batch_idx * len(data), (loader.__len__() * model.batch_size),
                        100. * batch_idx /loader.__len__(),
                        loss.data / len(data)))
+
+        writer.add_scalar('Loss/train', loss.data, batch_idx)
+        writer.close()
         batch_idx += 1
 
     print('====> Epoch: {} Average loss: {:.4f}'.format(
@@ -193,15 +198,21 @@ def test(epoch, loader):
     test_loss = 0
     for data in loader:
         with torch.no_grad():
-            if args.cuda:
+            if torch.cuda.is_available():
                 data = data.cuda()
             recon_batch, mu, logvar = model(data)
             test_loss += loss_function(recon_batch, data, mu, logvar).data
-            if epoch == 1:
-                torchvision.utils.save_image(data.data, '../output/Epoch_{}_data.jpg'.format(epoch), nrow=8, padding=2)
-            torchvision.utils.save_image(recon_batch.data, '../output/Epoch_{}_recon.jpg'.format(epoch), nrow=8, padding=2)
+            data_image = torchvision.utils.make_grid(data.data, nrow=4, padding=2)
+            recon_image = torchvision.utils.make_grid(recon_batch.data, nrow=4, padding=2)
+            torchvision.utils.save_image(data_image, '../output/Epoch_{}_data.jpg'.format(epoch))
+            torchvision.utils.save_image(recon_image, '../output/Epoch_{}_recon.jpg'.format(epoch))
+            writer.add_image('images/raw', data_image)
+            writer.add_image('images/recon', recon_image)
+            writer.close()
 
     test_loss /= (loader.__len__() * model.batch_size)
+    writer.add_scalar('Loss/train', test_loss, epoch)
+    writer.close()
     print('====> Test set loss: {:.4f}'.format(test_loss))
     return test_loss
 
@@ -213,7 +224,7 @@ def perform_latent_space_arithmatics(items):  # input is list of tuples of 3 [(a
     data = [totensor(i) for i in data]
     data = torch.stack(data, dim=0)
     data = Variable(data, volatile=True)
-    if args.cuda:
+    if torch.cuda.is_available():
         data = data.cuda()
     z = model.get_latent_var(data.view(-1, model.nc, model.ndf, model.ngf))
     it = iter(z.split(1))
@@ -302,7 +313,7 @@ def last_model_to_cpu():
 parser = argparse.ArgumentParser(description='PyTorch VAE')
 parser.add_argument('--batch-size', type=int, default=250, metavar='N',
                     help='input batch size for training (default: 250)')
-parser.add_argument('--epochs', type=int, default=20, metavar='N',
+parser.add_argument('--epochs', type=int, default=40, metavar='N',
                     help='number of epochs to train (default: 20)')
 parser.add_argument('--no-cuda', action='store_true', default=True,
                     help='enables CUDA training')
@@ -315,33 +326,36 @@ args = parser.parse_args()
 args.cuda = torch.cuda.is_available()
 
 torch.manual_seed(args.seed)
-if args.cuda:
+if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
-bite_size = 128
+# Writer will output to ./runs/ directory by default
+writer = SummaryWriter(comment="ShortBatchTraining_64")
+
+bite_size = 64  # Batch Size
 model = VAE(nc=3, ngf=32, ndf=32, latent_variable_size=500, batch_size=bite_size, test_size=100, image_size=64)
 if args.cuda:
     model.cuda()
     print("Training with GPU")
 
 
-reconstruction_function = nn.BCELoss()
+reconstruction_function = nn.MSELoss()
 reconstruction_function.size_average = False
 
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 if __name__ == '__main__':
     # Image sampling and saving
     img_path = "../images/Walker_ranch_topo.jfif"
-    save_path = "../../training_sample_set/train/"
-    samples = 500000
+    save_path = "./../training_sample_set_100k/test/"
+    samples = 10000
     sample_size = 64
     name = "Walker_range_small"
 
-    train_path = '../../training_sample_set/train/'
-    test_path = '../../training_sample_set/test/'
-    # training, testing = load_datasets(train_path, test_path, name, 128)
+    # Training Paths
+    train_path = '../../training_sample_set_100k/train/'
+    test_path = '../../training_sample_set_100k/test/'
 
     # sample_image(img_path, save_path, name, samples, sample_size)
     engage_training(False, train_path, test_path, bite_size, name)
@@ -350,6 +364,19 @@ if __name__ == '__main__':
     # load_last_model()
     # rand_faces(10)
 
+# Test loader
+#     m,s = get_image_metrics(img_path)
+#     print(m,s)
+#     training, testing = load_datasets(train_path, test_path, name, 8)
+#     train_features = next(iter(training))
+#     print(f"Feature batch shape: {train_features.size()}")
+#     data_image = torchvision.utils.make_grid(train_features.data, nrow=2, padding=2)
+#     torchvision.utils.save_image(data_image, '../output/testing_image.jpg')
+    # img = train_features[0].squeeze()
+    # img.show()
+    # img = img.reshape(64, 64, 3)
+    # plt.imshow(img)
+    # plt.show()
 
     # da = load_pickle(test_loader[0])
     # da = da[:120]
