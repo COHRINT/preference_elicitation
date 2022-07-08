@@ -184,8 +184,8 @@ def train(epoch, loader):
                        100. * batch_idx /loader.__len__(),
                        loss.data / len(data)))
 
-        writer.add_scalar('Loss/train', loss.data, batch_idx)
-        writer.close()
+            writer.add_scalar('Loss/train', loss.data, batch_idx*epoch)
+            writer.close()
         batch_idx += 1
 
     print('====> Epoch: {} Average loss: {:.4f}'.format(
@@ -202,16 +202,20 @@ def test(epoch, loader):
                 data = data.cuda()
             recon_batch, mu, logvar = model(data)
             test_loss += loss_function(recon_batch, data, mu, logvar).data
-            data_image = torchvision.utils.make_grid(data.data, nrow=4, padding=2)
-            recon_image = torchvision.utils.make_grid(recon_batch.data, nrow=4, padding=2)
-            torchvision.utils.save_image(data_image, '../output/Epoch_{}_data.jpg'.format(epoch))
-            torchvision.utils.save_image(recon_image, '../output/Epoch_{}_recon.jpg'.format(epoch))
-            writer.add_image('images/raw', data_image)
-            writer.add_image('images/recon', recon_image)
+            data_image = torchvision.utils.make_grid(data.data, nrow=1, padding=2)
+            recon_image = torchvision.utils.make_grid(recon_batch.data, nrow=1, padding=2)
+            try:
+                torchvision.utils.save_image(data_image, '../output/Epoch_{}_data.jpg'.format(epoch))
+                torchvision.utils.save_image(recon_image, '../output/Epoch_{}_recon.jpg'.format(epoch))
+            except FileNotFoundError:
+                torchvision.utils.save_image(data_image, './output/Epoch_{}_data.jpg'.format(epoch))
+                torchvision.utils.save_image(recon_image, './output/Epoch_{}_recon.jpg'.format(epoch))
+            writer.add_image('images/Epoch_{}_raw'.format(epoch), data_image)
+            writer.add_image('images/Epoch_{}_recon'.format(epoch), recon_image)
             writer.close()
 
     test_loss /= (loader.__len__() * model.batch_size)
-    writer.add_scalar('Loss/train', test_loss, epoch)
+    writer.add_scalar('Loss/test', test_loss, epoch)
     writer.close()
     print('====> Test set loss: {:.4f}'.format(test_loss))
     return test_loss
@@ -296,8 +300,14 @@ def engage_training(resume, n_path, s_path, data_name, batch):
     for epoch in range(start_epoch + 1, start_epoch + args.epochs + 1):
         train_loss = train(epoch, trainer)
         test_loss = test(epoch, tester)
-        torch.save(model.state_dict(),
-                   '../network_training/models/Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'.format(epoch, train_loss, test_loss))
+        scheduler.step()
+        try:
+            torch.save(model.state_dict(),
+                       '../network_training/models/Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'.format(epoch, train_loss, test_loss))
+        except FileNotFoundError:
+            torch.save(model.state_dict(),
+                       './network_training/models/Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'.format(epoch, train_loss, test_loss))
+
         # mosaic_validation(epoch, 100)
 
 
@@ -324,6 +334,7 @@ parser.add_argument('--log-interval', type=int, default=1, metavar='N',
 
 args = parser.parse_args()
 args.cuda = torch.cuda.is_available()
+args.log_interval = 10
 
 torch.manual_seed(args.seed)
 if torch.cuda.is_available():
@@ -332,10 +343,11 @@ if torch.cuda.is_available():
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
 # Writer will output to ./runs/ directory by default
-writer = SummaryWriter(comment="ShortBatchTraining_64")
+writer = SummaryWriter(comment="NoNorm_Batch4_ExpLR7_1e4_LVS500")
 
-bite_size = 64  # Batch Size
+bite_size = 4  # Batch Size
 model = VAE(nc=3, ngf=32, ndf=32, latent_variable_size=500, batch_size=bite_size, test_size=100, image_size=64)
+
 if args.cuda:
     model.cuda()
     print("Training with GPU")
@@ -345,17 +357,23 @@ reconstruction_function = nn.MSELoss()
 reconstruction_function.size_average = False
 
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, eps=1e-3)
+scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.7)
 if __name__ == '__main__':
     # Image sampling and saving
     img_path = "../images/Walker_ranch_topo.jfif"
-    save_path = "./../training_sample_set_100k/test/"
+    save_path = "../../training_sample_set_100k/test/"
     samples = 10000
     sample_size = 64
     name = "Walker_range_small"
 
     # Training Paths
-    train_path = '../../training_sample_set_100k/train/'
-    test_path = '../../training_sample_set_100k/test/'
+    try:
+        train_path = '../../training_sample_set_100k/train/'
+        test_path = '../../training_sample_set_100k/test/'
+    except FileNotFoundError:
+        train_path = './../training_sample_set_100k/train/'
+        test_path = './../training_sample_set_100k/test/'
 
     # sample_image(img_path, save_path, name, samples, sample_size)
     engage_training(False, train_path, test_path, bite_size, name)
@@ -366,7 +384,7 @@ if __name__ == '__main__':
 
 # Test loader
 #     m,s = get_image_metrics(img_path)
-#     print(m,s)
+    # print(m,s)
 #     training, testing = load_datasets(train_path, test_path, name, 8)
 #     train_features = next(iter(training))
 #     print(f"Feature batch shape: {train_features.size()}")

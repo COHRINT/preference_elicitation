@@ -91,9 +91,9 @@ class CustomImageDataset(Dataset):
         img_path = os.path.join(self.img_dir, str(self.data_name+str(idx)+'.jpeg'))
         im = PIL_image.open(img_path)
         im = torchvision.transforms.functional.to_tensor(im)
-        mean = [0.6785, 0.6938, 0.6454]
-        std = [0.1191, 0.1265, 0.1272]
-        im = torchvision.transforms.functional.normalize(im,mean,std)
+        mean = [0.6872, 0.6945, 0.6521]
+        std = [0.1499, 0.1589, 0.1614]
+        # im = torchvision.transforms.functional.normalize(im,mean,std)
         # im = read_image(img_path, mode=torchvision.io.ImageReadMode.RGB)
         # im = read_image(img_path)
         # im = im.float()
