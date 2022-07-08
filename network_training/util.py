@@ -85,7 +85,11 @@ class CustomImageDataset(Dataset):
         self.target_transform = target_transform
 
     def __len__(self):
-        return len(glob.glob(self.img_dir+"/*"))
+        try:
+            return len(glob.glob(self.img_dir+"/*"))
+        except FileNotFoundError:
+            self.img_dir = self.img_dir[1:]
+            return len(glob.glob(self.img_dir+"/*"))
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, str(self.data_name+str(idx)+'.jpeg'))
