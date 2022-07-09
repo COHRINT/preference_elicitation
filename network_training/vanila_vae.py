@@ -343,22 +343,23 @@ if torch.cuda.is_available():
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
 # Writer will output to ./runs/ directory by default
-writer = SummaryWriter(comment="NoNorm_Batch4_ExpLR7_1e4_LVS500")
 
+com = "NoNorm_Batch4_ExpLR7_1e4_LVS500"
 bite_size = 4  # Batch Size
 model = VAE(nc=3, ngf=32, ndf=32, latent_variable_size=500, batch_size=bite_size, test_size=100, image_size=64)
+optimizer = optim.Adam(model.parameters(), lr=1e-4)
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, eps=1e-3)
+scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.7)
 
 if args.cuda:
     model.cuda()
     print("Training with GPU")
+print(com)
 
-
+writer = SummaryWriter(comment=com)
 reconstruction_function = nn.MSELoss()
 reconstruction_function.size_average = False
 
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
-# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, eps=1e-3)
-scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.7)
 if __name__ == '__main__':
     # Image sampling and saving
     img_path = "../images/Walker_ranch_topo.jfif"
@@ -368,12 +369,8 @@ if __name__ == '__main__':
     name = "Walker_range_small"
 
     # Training Paths
-    try:
-        train_path = '../../training_sample_set_100k/train/'
-        test_path = '../../training_sample_set_100k/test/'
-    except FileNotFoundError:
-        train_path = './../training_sample_set_100k/train/'
-        test_path = './../training_sample_set_100k/test/'
+    train_path = '../../training_sample_set_100k/train/'
+    test_path = '../../training_sample_set_100k/test/'
 
     # sample_image(img_path, save_path, name, samples, sample_size)
     engage_training(False, train_path, test_path, bite_size, name)
