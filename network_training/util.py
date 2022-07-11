@@ -99,7 +99,7 @@ class CustomImageDataset(Dataset):
         im = torchvision.transforms.functional.to_tensor(im)
         mean = [0.6872, 0.6945, 0.6521]
         std = [0.1499, 0.1589, 0.1614]
-        # im = torchvision.transforms.functional.normalize(im,mean,std)
+        im = torchvision.transforms.functional.normalize(im, mean, std)
         # im = read_image(img_path, mode=torchvision.io.ImageReadMode.RGB)
         # im = read_image(img_path)
         # im = im.float()

@@ -47,7 +47,7 @@ def load_datasets(trn_path, tst_path, data_name, b_size):
 
 
 class VAE(nn.Module):
-    def __init__(self, nc, ngf, ndf, latent_variable_size, batch_size, test_size, image_size):
+    def __init__(self, nc, ngf, ndf, latent_variable_size, batch_size,  image_size):
         super(VAE, self).__init__()
 
         self.nc = nc
@@ -56,7 +56,6 @@ class VAE(nn.Module):
         self.img_sz = image_size
         self.latent_variable_size = latent_variable_size
         self.batch_size = batch_size
-        self.test_size = test_size
 
         # encoder
         self.e1 = nn.Conv2d(nc, ndf, 4, stride=2, padding=1)
@@ -344,9 +343,9 @@ kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
 # Writer will output to ./runs/ directory by default
 
-com = "NoNorm_Batch4_ExpLR7_1e4_LVS500"
+com = "Norm_Batch4_ExpLR7_1e4_LVS250_nf128"
 bite_size = 4  # Batch Size
-model = VAE(nc=3, ngf=32, ndf=32, latent_variable_size=500, batch_size=bite_size, test_size=100, image_size=64)
+model = VAE(nc=3, ngf=128, ndf=128, latent_variable_size=250, batch_size=bite_size, image_size=64)
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, eps=1e-3)
 scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.7)
@@ -382,11 +381,11 @@ if __name__ == '__main__':
 # Test loader
 #     m,s = get_image_metrics(img_path)
     # print(m,s)
-#     training, testing = load_datasets(train_path, test_path, name, 8)
-#     train_features = next(iter(training))
-#     print(f"Feature batch shape: {train_features.size()}")
-#     data_image = torchvision.utils.make_grid(train_features.data, nrow=2, padding=2)
-#     torchvision.utils.save_image(data_image, '../output/testing_image.jpg')
+    # training, testing = load_datasets(train_path, test_path, name, 80)
+    # train_features = next(iter(training))
+    # print(f"Feature batch shape: {train_features.size()}")
+    # data_image = torchvision.utils.make_grid(train_features.data, nrow=4, padding=2)
+    # torchvision.utils.save_image(data_image, '../output/testing_image.jpg')
     # img = train_features[0].squeeze()
     # img.show()
     # img = img.reshape(64, 64, 3)
