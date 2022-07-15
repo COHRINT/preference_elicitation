@@ -13,5 +13,5 @@
 module load anaconda
 module load cuda/10.2
 conda activate vae_python
-python network_training/vanilla_vae.py
+python network_training/vanila_vae.py --lr 1e-4 --beta 1
 
