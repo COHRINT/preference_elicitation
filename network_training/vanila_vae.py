@@ -58,16 +58,16 @@ class VAE(nn.Module):
         self.batch_size = batch_size
 
         # encoder
-        self.e1 = nn.Conv2d(nc, ndf, 4, stride=2, padding=1)
+        self.e1 = nn.Conv2d(nc, ndf, (4, 4), stride=2, padding=1)
         self.bn1 = nn.BatchNorm2d(ndf)
 
-        self.e2 = nn.Conv2d(ndf, ndf * 2, 4, stride=2, padding=1)
+        self.e2 = nn.Conv2d(ndf, ndf * 2, (4, 4), stride=2, padding=1)
         self.bn2 = nn.BatchNorm2d(ndf * 2)
 
-        self.e3 = nn.Conv2d(ndf * 2, ndf * 4, 4, stride=2, padding=1)
+        self.e3 = nn.Conv2d(ndf * 2, ndf * 4, (4, 4), stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(ndf * 4)
 
-        self.e4 = nn.Conv2d(ndf * 4, ndf * 8, 4, stride=2, padding=1)
+        self.e4 = nn.Conv2d(ndf * 4, ndf * 8, (4, 4), stride=2, padding=1)
         self.bn4 = nn.BatchNorm2d(ndf * 8)
 
         self.fc1 = nn.Linear(ndf * 8, latent_variable_size)
@@ -77,8 +77,7 @@ class VAE(nn.Module):
         self.d1 = nn.Linear(latent_variable_size, ngf * 8)
 
         self.up1 = nn.UpsamplingNearest2d(scale_factor=2)
-        self.pd1 = nn.ReplicationPad2d(1)
-        self.d2 = nn.Conv2d(ngf * 8, ngf * 4, 3, stride=1)
+        self.d2 = nn.Conv2d(ngf * 8, ngf * 4, (3, 3), stride=1, padding='same')
         self.bn6 = nn.BatchNorm2d(ngf * 4, 1.e-3)
 
         # self.up2 = nn.UpsamplingNearest2d(scale_factor=2)
@@ -87,18 +86,15 @@ class VAE(nn.Module):
         # self.bn7 = nn.BatchNorm2d(ngf * 4, 1.e-3)
 
         self.up2 = nn.UpsamplingNearest2d(scale_factor=2)
-        self.pd2 = nn.ReplicationPad2d(1)
-        self.d3 = nn.Conv2d(ngf * 4, ngf * 2, 3, stride=1)
+        self.d3 = nn.Conv2d(ngf * 4, ngf * 2, (3, 3), stride=1, padding='same')
         self.bn7 = nn.BatchNorm2d(ngf * 2, 1.e-3)
 
         self.up3 = nn.UpsamplingNearest2d(scale_factor=2)
-        self.pd3 = nn.ReplicationPad2d(1)
-        self.d4 = nn.Conv2d(ngf * 2, ngf, 3, stride=1)
+        self.d4 = nn.Conv2d(ngf * 2, ngf, (3, 3), stride=1, padding='same')
         self.bn8 = nn.BatchNorm2d(ngf, 1.e-3)
 
         self.up4 = nn.UpsamplingNearest2d(scale_factor=2)
-        self.pd4 = nn.ReplicationPad2d(1)
-        self.d5 = nn.Conv2d(ngf, nc, 3, stride=1)
+        self.d5 = nn.Conv2d(ngf, nc, (3, 3), stride=1, padding='same')
 
         self.leakyrelu = nn.LeakyReLU(0.2)
         self.relu = nn.ReLU()
@@ -118,12 +114,12 @@ class VAE(nn.Module):
     def decode(self, z):
         h1 = self.relu(self.d1(z))
         h1 = h1.view(-1, self.ngf * 8, 4, 4)  # Network reshaping
-        h2 = self.leakyrelu(self.bn6(self.d2(self.pd1(self.up1(h1)))))
-        h3 = self.leakyrelu(self.bn7(self.d3(self.pd2(self.up2(h2)))))
-        h4 = self.leakyrelu(self.bn8(self.d4(self.pd3(self.up3(h3)))))
+        h2 = self.leakyrelu(self.bn6(self.d2(self.up1(h1))))
+        h3 = self.leakyrelu(self.bn7(self.d3(self.up2(h2))))
+        h4 = self.leakyrelu(self.bn8(self.d4(self.up3(h3))))
         # h5 = self.leakyrelu(self.bn9(self.d5(self.pd4(self.up4(h4)))))
 
-        return self.sigmoid(self.d5(self.pd4(self.up4(h4))))
+        return self.sigmoid(self.d5(self.up4(h4)))
 
     def reparametrize(self, mu, logvar):
         std = logvar.mul(0.5).exp_()
@@ -151,14 +147,14 @@ class VAE(nn.Module):
 
 def loss_function(recon_x, x, mu, logvar):
     # print(np.shape(recon_x))
-    BCE = reconstruction_function(recon_x, x)
+    MSE = reconstruction_function(recon_x, x)
 
     # https://arxiv.org/abs/1312.6114 (Appendix B)
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
     KLD = torch.sum(KLD_element).mul_(-0.5)
 
-    return BCE + KLD
+    return MSE + args.beta*KLD
 
 
 def train(epoch, loader):
@@ -183,7 +179,13 @@ def train(epoch, loader):
                        100. * batch_idx /loader.__len__(),
                        loss.data / len(data)))
 
+            # Calculate gradients
+            parameters = model.parameters()
+            gradients = []
+            for param in filter(lambda param: param.grad is not None, parameters):
+                gradients.append(torch.mean(torch.abs(param.grad.data)))
             writer.add_scalar('Loss/train', loss.data, batch_idx*epoch)
+            writer.add_scalar("gradient", torch.mean(torch.stack(gradients)), batch_idx*epoch)
             writer.close()
         batch_idx += 1
 
@@ -201,17 +203,14 @@ def test(epoch, loader):
                 data = data.cuda()
             recon_batch, mu, logvar = model(data)
             test_loss += loss_function(recon_batch, data, mu, logvar).data
-            data_image = torchvision.utils.make_grid(data.data, nrow=1, padding=2)
-            recon_image = torchvision.utils.make_grid(recon_batch.data, nrow=1, padding=2)
+            data_image = torchvision.utils.make_grid(data.data, nrow=8, padding=2)
+            recon_image = torchvision.utils.make_grid(recon_batch.data, nrow=8, padding=2)
             try:
                 torchvision.utils.save_image(data_image, '../output/Epoch_{}_data.jpg'.format(epoch))
                 torchvision.utils.save_image(recon_image, '../output/Epoch_{}_recon.jpg'.format(epoch))
             except FileNotFoundError:
                 torchvision.utils.save_image(data_image, './output/Epoch_{}_data.jpg'.format(epoch))
                 torchvision.utils.save_image(recon_image, './output/Epoch_{}_recon.jpg'.format(epoch))
-            writer.add_image('images/Epoch_{}_raw'.format(epoch), data_image)
-            writer.add_image('images/Epoch_{}_recon'.format(epoch), recon_image)
-            writer.close()
 
     test_loss /= (loader.__len__() * model.batch_size)
     writer.add_scalar('Loss/test', test_loss, epoch)
@@ -318,74 +317,91 @@ def last_model_to_cpu():
 
 # Training design #################################################################################################
 
+com = "Norm_Batch128_ExpLR7_1e5_LVS150_nf64"
+bite_size = 128         # Batch Size
+nerve_factor = 32       # Nerve growth factor
+LVS_size = 150          # Size of latent variable
+learning_rate = 1e-5    # Starting learning rate
+gamma = 0.7             # Exponential decay constant for learning rate
+logging_rate = 10       # Rate at which information is logged
+epochs = 40             # Number of Epochs
+beta = 1                # Beta KLD reconstruction weighting
+
 
 parser = argparse.ArgumentParser(description='PyTorch VAE')
-parser.add_argument('--batch-size', type=int, default=250, metavar='N',
-                    help='input batch size for training (default: 250)')
-parser.add_argument('--epochs', type=int, default=40, metavar='N',
-                    help='number of epochs to train (default: 20)')
-parser.add_argument('--no-cuda', action='store_true', default=True,
-                    help='enables CUDA training')
-parser.add_argument('--seed', type=int, default=1, metavar='S',
-                    help='random seed (default: 1)')
-parser.add_argument('--log-interval', type=int, default=1, metavar='N',
+parser.add_argument('--batch', type=int, default=bite_size,
+                    help='input batch size for training (default: {})'.format(bite_size))
+parser.add_argument('--lr', type=float, default=learning_rate,
+                    help='starting learning rate (default: {})'.format(learning_rate))
+parser.add_argument('--epochs', type=int, default=epochs,
+                    help='number of epochs to train (default: {})'.format(epochs))
+parser.add_argument('--nerve', type=int, default=nerve_factor,
+                    help='nerve growth and decay factor (default: {}'.format(nerve_factor))
+parser.add_argument('--lvs', type=int, default=LVS_size,
+                    help='size of latent variable (default: {})'.format(LVS_size))
+parser.add_argument('--log-interval', type=int, default=logging_rate,
                     help='how many batches to wait before logging training status')
-
+parser.add_argument('--gamma', type=float, default=gamma,
+                    help='exponential decay of learning rate (default: {})'.format(gamma))
+parser.add_argument('--beta', type=float, default=beta,
+                    help='weighting constant for KLD reconstruction loss (default: {})'.format(beta))
+parser.add_argument('--com', type=str, default='',
+                    help='optional extra comment for logging')
 args = parser.parse_args()
-args.cuda = torch.cuda.is_available()
-args.log_interval = 10
 
-torch.manual_seed(args.seed)
+model = VAE(nc=3, ngf=args.nerve, ndf=args.nerve, latent_variable_size=args.lvs, batch_size=args.batch, image_size=64)
+optimizer = optim.Adam(model.parameters(), lr=args.lr)
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, eps=1e-3)
+scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.gamma)
+
+args.cuda = torch.cuda.is_available()
+args.log_interval = logging_rate
+
+logging_comment = str(args.com+"_ExpLR{}_{}_LVS{}_nf{}".format(args.gamma, args.lr, args.lvs, args.nerve))
+if args.cuda:
+    model.cuda()
+    print("Training with GPU")
+print(logging_comment)
+
+# Set random seed
+torch.manual_seed(1)
 if torch.cuda.is_available():
-    torch.cuda.manual_seed(args.seed)
+    torch.cuda.manual_seed(1)
 
 kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 
 # Writer will output to ./runs/ directory by default
-
-com = "Norm_Batch4_ExpLR7_1e4_LVS250_nf128"
-bite_size = 4  # Batch Size
-model = VAE(nc=3, ngf=128, ndf=128, latent_variable_size=250, batch_size=bite_size, image_size=64)
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
-# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1, eps=1e-3)
-scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.7)
-
-if args.cuda:
-    model.cuda()
-    print("Training with GPU")
-print(com)
-
-writer = SummaryWriter(comment=com)
+writer = SummaryWriter(comment=logging_comment)
 reconstruction_function = nn.MSELoss()
-reconstruction_function.size_average = False
+reconstruction_function.reduction = 'mean'
 
 if __name__ == '__main__':
     # Image sampling and saving
-    img_path = "../images/Walker_ranch_topo.jfif"
-    save_path = "../../training_sample_set_100k/test/"
-    samples = 10000
+    img_path = "../images/South_Eldorado_topo_FS_raw_.jpeg"
+    save_path = "../../training_sample_set_FS_60k/train/"
+    samples = 60000
     sample_size = 64
-    name = "Walker_range_small"
+    name = "Eldorado_FS_"
 
     # Training Paths
-    train_path = '../../training_sample_set_100k/train/'
-    test_path = '../../training_sample_set_100k/test/'
+    train_path = '../../training_sample_set_FS_60k/train/'
+    test_path = '../../training_sample_set_FS_60k/test/'
 
     # sample_image(img_path, save_path, name, samples, sample_size)
-    engage_training(False, train_path, test_path, bite_size, name)
+    engage_training(False, train_path, test_path, args.batch, name)
     # train()
     # last_model_to_cpu()
     # load_last_model()
     # rand_faces(10)
 
 # Test loader
-#     m,s = get_image_metrics(img_path)
-    # print(m,s)
-    # training, testing = load_datasets(train_path, test_path, name, 80)
-    # train_features = next(iter(training))
-    # print(f"Feature batch shape: {train_features.size()}")
-    # data_image = torchvision.utils.make_grid(train_features.data, nrow=4, padding=2)
-    # torchvision.utils.save_image(data_image, '../output/testing_image.jpg')
+#     m, s = get_image_metrics(img_path)
+#     print(m, s)
+#     training, testing = load_datasets(train_path, test_path, name, 80)
+#     train_features = next(iter(training))
+#     print(f"Feature batch shape: {train_features.size()}")
+#     data_image = torchvision.utils.make_grid(train_features.data, nrow=8, padding=2)
+#     torchvision.utils.save_image(data_image, '../output/testing_image.jpg')
     # img = train_features[0].squeeze()
     # img.show()
     # img = img.reshape(64, 64, 3)

@@ -67,13 +67,19 @@ def sample_image(filename, save_path, set_name, n_samples, sample_size):
     x_set = range(0, x_avail)
     y_set = range(0, y_avail)
 
-    for s in range(0, n_samples+1):
+    for s in range(0, n_samples, 3):
         x_sample = random.choice(x_set)
         y_sample = random.choice(y_set)
         new_img = data[x_sample:x_sample + sample_size, y_sample:y_sample + sample_size]
         path = str(save_path + set_name + str(s) + ".jpeg")
         # print(path)
         image.imsave(path, new_img)
+        path_flipped = str(save_path+set_name+str(s+1)+".jpeg")
+        image.imsave(path_flipped, np.flipud(new_img))
+        path_mirror = str(save_path+set_name+str(s+2)+".jpeg")
+        image.imsave(path_mirror, np.fliplr(new_img))
+
+
 
 
 class CustomImageDataset(Dataset):
@@ -97,8 +103,15 @@ class CustomImageDataset(Dataset):
         img_path = os.path.join(self.img_dir, str(self.data_name+str(idx)+'.jpeg'))
         im = PIL_image.open(img_path)
         im = torchvision.transforms.functional.to_tensor(im)
-        mean = [0.6872, 0.6945, 0.6521]
-        std = [0.1499, 0.1589, 0.1614]
+        # MapBuilder Topo
+        # mean = [0.6872, 0.6945, 0.6521]
+        # std = [0.1499, 0.1589, 0.1614]
+        # TF Outdoors
+        # mean = [0.7487, 0.8285, 0.7654]
+        # std = [0.0841, 0.0788, 0.0951]
+        # Forest Service Raw
+        mean = [0.9133, 0.9372, 0.8405]
+        std = [0.0963, 0.1203, 0.1381]
         im = torchvision.transforms.functional.normalize(im, mean, std)
         # im = read_image(img_path, mode=torchvision.io.ImageReadMode.RGB)
         # im = read_image(img_path)
