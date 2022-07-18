@@ -152,7 +152,7 @@ def loss_function(recon_x, x, mu, logvar):
     # https://arxiv.org/abs/1312.6114 (Appendix B)
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
-    KLD = torch.sum(KLD_element).mul_(-0.5)
+    KLD = torch.mean(KLD_element).mul_(-0.5)
 
     return MSE + args.beta*KLD
 
@@ -321,8 +321,8 @@ com = "Norm_Batch128_ExpLR7_1e5_LVS150_nf64"
 bite_size = 128         # Batch Size
 nerve_factor = 32       # Nerve growth factor
 LVS_size = 150          # Size of latent variable
-learning_rate = 1e-5    # Starting learning rate
-gamma = 0.7             # Exponential decay constant for learning rate
+learning_rate = 1e-4    # Starting learning rate
+gamma = 0.9             # Exponential decay constant for learning rate
 logging_rate = 10       # Rate at which information is logged
 epochs = 40             # Number of Epochs
 beta = 1                # Beta KLD reconstruction weighting

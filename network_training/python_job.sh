@@ -2,10 +2,10 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
+#SBATCH --gres=gpu
 #SBATCH --mail-type=END
 #SBATCH --mail-user=hura1154
-#SBATCH --time=24:00:00
-#SBATCH --partition=sgpu
+#SBATCH --time=8:00:00
 #SBATCH --job-name=py-vae-trainer
 #SBATCH --output=py-vae-trainer-%j.out
 
