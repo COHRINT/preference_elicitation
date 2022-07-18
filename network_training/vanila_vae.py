@@ -206,11 +206,11 @@ def test(epoch, loader):
             data_image = torchvision.utils.make_grid(data.data, nrow=8, padding=2)
             recon_image = torchvision.utils.make_grid(recon_batch.data, nrow=8, padding=2)
             try:
-                torchvision.utils.save_image(data_image, '../output/Epoch_{}_data.jpg'.format(epoch))
-                torchvision.utils.save_image(recon_image, '../output/Epoch_{}_recon.jpg'.format(epoch))
+                torchvision.utils.save_image(data_image, '../output/{}Epoch_{}_data.jpg'.format(logging_comment, epoch))
+                torchvision.utils.save_image(recon_image, '../output/{}Epoch_{}_recon.jpg'.format(logging_comment, epoch))
             except FileNotFoundError:
-                torchvision.utils.save_image(data_image, './output/Epoch_{}_data.jpg'.format(epoch))
-                torchvision.utils.save_image(recon_image, './output/Epoch_{}_recon.jpg'.format(epoch))
+                torchvision.utils.save_image(data_image, './output/{}Epoch_{}_data.jpg'.format(logging_comment, epoch))
+                torchvision.utils.save_image(recon_image, './output/{}Epoch_{}_recon.jpg'.format(logging_comment, epoch))
 
     test_loss /= (loader.__len__() * model.batch_size)
     writer.add_scalar('Loss/test', test_loss, epoch)
@@ -274,7 +274,7 @@ def latent_space_transition(items):  # input is list of tuples of  (a,b)
     result = [im for item in result for im in item]
 
     result = torch.cat(result, 0)
-    torchvision.utils.save_image(result.data, '../output/trans.jpg', nrow=2 + numsample, padding=2)
+    torchvision.utils.save_image(result.data, '../output_{}/trans.jpg'.format(logging_comment), nrow=2 + numsample, padding=2)
 
 
 def load_last_model():
@@ -357,7 +357,7 @@ scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.gamma)
 args.cuda = torch.cuda.is_available()
 args.log_interval = logging_rate
 
-logging_comment = str(args.com+"_ExpLR{}_{}_LVS{}_nf{}".format(args.gamma, args.lr, args.lvs, args.nerve))
+logging_comment = str(args.com+"_ExpLR{}_{}_LVS{}_nf{}_b{}".format(args.gamma, args.lr, args.lvs, args.nerve, args.beta))
 if args.cuda:
     model.cuda()
     print("Training with GPU")
@@ -408,9 +408,5 @@ if __name__ == '__main__':
     # plt.imshow(img)
     # plt.show()
 
-    # da = load_pickle(test_loader[0])
-    # da = da[:120]
-    # it = iter(da)
-    # l = zip(it, it, it)
     # # latent_space_transition(l)
     # perform_latent_space_arithmatics(l)
