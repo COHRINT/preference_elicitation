@@ -322,9 +322,9 @@ bite_size = 128         # Batch Size
 nerve_factor = 32       # Nerve growth factor
 LVS_size = 150          # Size of latent variable
 learning_rate = 1e-4    # Starting learning rate
-gamma = 0.9             # Exponential decay constant for learning rate
+gamma = 0.8                         # Exponential decay constant for learning rate
 logging_rate = 10       # Rate at which information is logged
-epochs = 40             # Number of Epochs
+epochs = 60             # Number of Epochs
 beta = 1                # Beta KLD reconstruction weighting
 
 
