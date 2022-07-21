@@ -327,10 +327,12 @@ def engage_training(resume, n_path, s_path, data_name, batch):
         scheduler.step()
         try:
             torch.save(model.state_dict(),
-                       '../network_training/models/Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'.format(epoch, train_loss, test_loss))
+                       '../network_training/models/{}_Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'
+                       .format(logging_comment, epoch, train_loss, test_loss))
         except FileNotFoundError:
             torch.save(model.state_dict(),
-                       './network_training/models/Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'.format(epoch, train_loss, test_loss))
+                       './network_training/models/{}_Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'
+                       .format(logging_comment, epoch, train_loss, test_loss))
 
         # mosaic_validation(epoch, 100)
 
