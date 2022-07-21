@@ -80,7 +80,18 @@ def sample_image(filename, save_path, set_name, n_samples, sample_size):
         image.imsave(path_mirror, np.fliplr(new_img))
 
 
-
+def normalize_image(img):
+    # MapBuilder Topo
+    # mean = [0.6872, 0.6945, 0.6521]
+    # std = [0.1499, 0.1589, 0.1614]
+    # TF Outdoors
+    # mean = [0.7487, 0.8285, 0.7654]
+    # std = [0.0841, 0.0788, 0.0951]
+    # Forest Service Raw
+    mean = [0.9133, 0.9372, 0.8405]
+    std = [0.0963, 0.1203, 0.1381]
+    im = torchvision.transforms.functional.normalize(img, mean, std)
+    return im
 
 class CustomImageDataset(Dataset):
     def __init__(self, img_dir, name, transform=None, target_transform=None):
@@ -103,16 +114,7 @@ class CustomImageDataset(Dataset):
         img_path = os.path.join(self.img_dir, str(self.data_name+str(idx)+'.jpeg'))
         im = PIL_image.open(img_path)
         im = torchvision.transforms.functional.to_tensor(im)
-        # MapBuilder Topo
-        # mean = [0.6872, 0.6945, 0.6521]
-        # std = [0.1499, 0.1589, 0.1614]
-        # TF Outdoors
-        # mean = [0.7487, 0.8285, 0.7654]
-        # std = [0.0841, 0.0788, 0.0951]
-        # Forest Service Raw
-        mean = [0.9133, 0.9372, 0.8405]
-        std = [0.0963, 0.1203, 0.1381]
-        im = torchvision.transforms.functional.normalize(im, mean, std)
+        im = normalize_image(im)
         # im = read_image(img_path, mode=torchvision.io.ImageReadMode.RGB)
         # im = read_image(img_path)
         # im = im.float()
