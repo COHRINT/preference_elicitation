@@ -20,23 +20,6 @@ from PIL import Image
 totensor = transforms.ToTensor()
 
 
-def load_batch(batch_idx, istrain):
-    image_set_name = "Walker_range_small"
-    if istrain:
-        template = str('../../training_sample_set/train/' + image_set_name + '%s.jpeg')
-
-    else:
-        template = str('../../training_sample_set/test/' + image_set_name + '%s.jpeg')
-
-    picture_set = [str(batch_idx * model.batch_size + i) for i in range(model.batch_size)]
-    data = []
-    for idx in picture_set:
-        img = Image.open(template % idx)
-        data.append(np.array(img))
-    data = [totensor(i) for i in data]
-    return torch.stack(data, dim=0)
-
-
 def load_datasets(trn_path, tst_path, data_name, b_size):
     training_data = CustomImageDataset(trn_path, data_name)
     test_data = CustomImageDataset(tst_path, data_name)
@@ -59,23 +42,41 @@ class VAE(nn.Module):
         self.use_gpu = gpu
 
         # encoder
-        self.e1 = nn.Conv2d(nc, ndf, (4, 4), stride=2, padding=1)
+        # self.e1 = nn.Conv2d(nc, ndf, (4, 4), stride=2, padding=1)
+        # self.bn1 = nn.BatchNorm2d(ndf)
+        #
+        # self.e2 = nn.Conv2d(ndf, ndf * 2, (4, 4), stride=2, padding=1)
+        # self.bn2 = nn.BatchNorm2d(ndf * 2)
+        #
+        # self.e3 = nn.Conv2d(ndf * 2, ndf * 4, (4, 4), stride=2, padding=1)
+        # self.bn3 = nn.BatchNorm2d(ndf * 4)
+        #
+        # self.e4 = nn.Conv2d(ndf * 4, ndf * 8, (4, 4), stride=2, padding=1)
+        # self.bn4 = nn.BatchNorm2d(ndf * 8)
+        self.e1 = nn.Conv2d(nc, ndf, (3, 3), stride=2, padding=1)
         self.bn1 = nn.BatchNorm2d(ndf)
 
-        self.e2 = nn.Conv2d(ndf, ndf * 2, (4, 4), stride=2, padding=1)
+        self.e2 = nn.Conv2d(ndf, ndf * 2, (3, 3), stride=2, padding=1)
         self.bn2 = nn.BatchNorm2d(ndf * 2)
 
-        self.e3 = nn.Conv2d(ndf * 2, ndf * 4, (4, 4), stride=2, padding=1)
+        self.e3 = nn.Conv2d(ndf * 2, ndf * 4, (3, 3), stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(ndf * 4)
 
-        self.e4 = nn.Conv2d(ndf * 4, ndf * 8, (4, 4), stride=2, padding=1)
+        self.e4 = nn.Conv2d(ndf * 4, ndf * 8, (3, 3), stride=2, padding=1)
         self.bn4 = nn.BatchNorm2d(ndf * 8)
 
-        self.fc1 = nn.Linear(ndf * 8 * 4 * 4, latent_variable_size)
-        self.fc2 = nn.Linear(ndf * 8 * 4 * 4, latent_variable_size)
+        if self.img_sz == 32:
+            self.fc1 = nn.Linear(ndf * 8 * 4, latent_variable_size)
+            self.fc2 = nn.Linear(ndf * 8 * 4, latent_variable_size)
+        elif self.img_sz == 64:
+            self.fc1 = nn.Linear(ndf * 8 * 4 * 4, latent_variable_size)
+            self.fc2 = nn.Linear(ndf * 8 * 4 * 4, latent_variable_size)
 
         # decoder
-        self.d1 = nn.Linear(latent_variable_size, 4 * 4 * ngf * 8)
+        if self.img_sz == 32:
+            self.d1 = nn.Linear(latent_variable_size, 4 * ngf * 8)
+        elif self.img_sz == 64:
+            self.d1 = nn.Linear(latent_variable_size, 4 * 4 * ngf * 8)
 
         self.up1 = nn.UpsamplingNearest2d(scale_factor=2)
         self.d2 = nn.Conv2d(ngf * 8, ngf * 4, (3, 3), stride=1, padding='same')
@@ -111,7 +112,10 @@ class VAE(nn.Module):
 
     def decode(self, z):
         h1 = self.relu(self.d1(z))
-        h1 = h1.view(-1, self.ngf * 8, 4, 4)  # Network reshaping
+        if self.img_sz == 32:
+            h1 = h1.view(-1, self.ngf * 8, 2, 2)  # Network reshaping
+        elif self.img_sz == 64:
+            h1 = h1.view(-1, self.ngf * 8, 4, 4)
         h2 = self.leakyrelu(self.bn6(self.d2(self.up1(h1))))
         h3 = self.leakyrelu(self.bn7(self.d3(self.up2(h2))))
         h4 = self.leakyrelu(self.bn8(self.d4(self.up3(h3))))
@@ -132,11 +136,10 @@ class VAE(nn.Module):
         """Returns the latent variable from an input image"""
         # mu, logvar = self.encode(x.view(-1, self.nc, self.img_sz, self.img_sz))
         mu, logvar = self.encode(x)
-        print("mu shape", np.shape(mu))
         z = self.reparametrize(mu, logvar)
         return z
 
-    def forward(self, x, gpu):
+    def forward(self, x):
         """Runs the model in a forward fashion. Returns reconstruction, mean, and variance"""
         # print("Forward shape", np.shape(x))
         # mu, logvar = self.encode(x.view(-1, self.nc, self.img_sz, self.img_sz))
@@ -334,8 +337,6 @@ def engage_training(resume, n_path, s_path, data_name, batch):
                        './network_training/models/{}_Epoch_{}_Train_loss_{:.4f}_Test_loss_{:.4f}.pth'
                        .format(logging_comment, epoch, train_loss, test_loss))
 
-        # mosaic_validation(epoch, 100)
-
 
 def last_model_to_cpu():
     _, last_cp = load_last_model()
@@ -345,15 +346,15 @@ def last_model_to_cpu():
 
 # Training design #################################################################################################
 if __name__ == '__main__':
-    # com = "Norm_Batch128_ExpLR7_1e5_LVS150_nf64"
+
     bite_size = 128         # Batch Size
     nerve_factor = 32       # Nerve growth factor
     LVS_size = 150          # Size of latent variable
     learning_rate = 1e-4    # Starting learning rate
-    gamma = 0.8                         # Exponential decay constant for learning rate
+    gamma = 0.6             # Exponential decay constant for learning rate
     logging_rate = 10       # Rate at which information is logged
-    epochs = 60             # Number of Epochs
-    beta = 0.01                # Beta KLD reconstruction weighting
+    epochs = 40             # Number of Epochs
+    beta = .1               # Beta KLD reconstruction weighting
 
     parser = argparse.ArgumentParser(description='PyTorch VAE')
     parser.add_argument('--batch', type=int, default=bite_size,
@@ -405,15 +406,15 @@ if __name__ == '__main__':
 ########################################################################################################################
 
     # Image sampling and saving
-    img_path = "../images/South_Eldorado_topo_FS_raw_.jpeg"
-    save_path = "../../training_sample_set_FS_60k/train/"
+    img_path = "../images/Boulder_flatirons_topo_FS_raw@4_NC.jpeg"
+    save_path = "../../training_sample_set_FS_60k_4x_NC_32/train/"
     samples = 60000
-    sample_size = 64
+    sample_size = 32
     name = "Eldorado_FS_"
 
     # Training Paths
-    train_path = '../../training_sample_set_FS_60k/train/'
-    test_path = '../../training_sample_set_FS_60k/test/'
+    train_path = '../../training_sample_set_FS_60k_4x_NC/train/'
+    test_path = '../../training_sample_set_FS_60k_4x_NC/test/'
 
     # sample_image(img_path, save_path, name, samples, sample_size)
     # Writer will output to ./runs/ directory by default
@@ -427,11 +428,11 @@ if __name__ == '__main__':
 # Test loader
 #     m, s = get_image_metrics(img_path)
 #     print(m, s)
-#     training, testing = load_datasets(train_path, test_path, name, 4)
+#     training, testing = load_datasets(train_path, test_path, name, 64)
 #     train_features = next(iter(training))
 #     print(f"Feature batch shape: {train_features.size()}")
 #     data_image = torchvision.utils.make_grid(train_features.data, nrow=8, padding=2)
-#     torchvision.utils.save_image(data_image, '../output/testing_image.jpg')
+#     torchvision.utils.save_image(data_image, '../output/testing_image_@4_NC.jpg')
     # img = train_features[0].squeeze()
     # img.show()
     # img = img.reshape(64, 64, 3)

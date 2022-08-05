@@ -67,17 +67,18 @@ def sample_image(filename, save_path, set_name, n_samples, sample_size):
     x_set = range(0, x_avail)
     y_set = range(0, y_avail)
 
-    for s in range(0, n_samples, 3):
+    # for s in range(0, n_samples, 3):
+    for s in range(0, n_samples, 1):
         x_sample = random.choice(x_set)
         y_sample = random.choice(y_set)
         new_img = data[x_sample:x_sample + sample_size, y_sample:y_sample + sample_size]
         path = str(save_path + set_name + str(s) + ".jpeg")
         # print(path)
         image.imsave(path, new_img)
-        path_flipped = str(save_path+set_name+str(s+1)+".jpeg")
-        image.imsave(path_flipped, np.flipud(new_img))
-        path_mirror = str(save_path+set_name+str(s+2)+".jpeg")
-        image.imsave(path_mirror, np.fliplr(new_img))
+        # path_flipped = str(save_path+set_name+str(s+1)+".jpeg")
+        # image.imsave(path_flipped, np.flipud(new_img))
+        # path_mirror = str(save_path+set_name+str(s+2)+".jpeg")
+        # image.imsave(path_mirror, np.fliplr(new_img))
 
 
 def normalize_image(img):
