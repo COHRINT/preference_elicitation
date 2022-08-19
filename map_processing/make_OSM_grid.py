@@ -5,6 +5,7 @@ from OSMPythonTools.overpass import Overpass, overpassQueryBuilder
 from OSMPythonTools.data import Data, dictRangeYears, ALL
 import numpy as np
 from collections import OrderedDict
+import pickle
 
 # Box constraints
 
@@ -77,8 +78,10 @@ waterway_dict = OrderedDict([
 ])
 
 # Total grid size
-ns_size = int(np.ceil((north - south) / grid_size))
-ew_size = int(np.ceil((east - west) / grid_size))
+#ns_size = int(np.ceil((north - south) / grid_size))
+# ew_size = int(np.ceil((east - west) / grid_size))
+ns_size = 2
+ew_size = 2
 data_set = [None] * ns_size * ew_size
 data_set = [copy.deepcopy(LVS_dict) for i in data_set]
 
@@ -88,22 +91,22 @@ overpass = Overpass()
 
 def fetch_highway(coordinates, typeOfRoad):
     query = overpassQueryBuilder(bbox=coordinates, elementType='way', selector='"highway"="' + typeOfRoad + '"', out='count')
-    return overpass.query(query).countElements()
+    return overpass.query(query, timeout=120).countElements()
 
 
 def fetch_waterway(coordinates, typeOfWater):
     query = overpassQueryBuilder(bbox=coordinates, elementType='way', selector='"waterway"="' + typeOfWater + '"', out='count')
-    return overpass.query(query).countElements()
+    return overpass.query(query, timeout=120).countElements()
 
 
 def fetch_power(coordinates):
     query = overpassQueryBuilder(bbox=coordinates, elementType='way', selector='"power"="line"', out='count')
-    return overpass.query(query).countElements()
+    return overpass.query(query, timeout=120).countElements()
 
 
 def fetch_natural(coordinates, typeOfNature):
     query = overpassQueryBuilder(bbox=coordinates, elementType='way', selector='"natural"="' + typeOfNature + '"', out='count')
-    return overpass.query(query).countElements()
+    return overpass.query(query, timeout=120).countElements()
 
 
 # Generate set of bounding boxes
@@ -122,6 +125,8 @@ for r in range(ns_size):
         west_edge = westing - grid_size/2
         east_edge = westing + grid_size/2
         coord_dict[i] = [south_edge, west_edge, north_edge, east_edge]
+        data_set[i]['lat'] = northing
+        data_set[i]['lon'] = westing
         i += 1
     northing -= grid_size
     westing = west
@@ -142,10 +147,27 @@ highway_dict = OrderedDict([
         'footway': 'footway',
         'path': 'path',
         'cycleway': 'cycleway',
-        'unclassified': 'unclassified'
+        # 'unclassified': 'unclassified'
     }))
 ])
 
 data = Data(fetch_highway, highway_dict)
-print(data)
+data_dict = data.select(coordinates=ALL).getDict()  # Convert to dictionary
+
+# Save off
+for coord in data_dict:
+    grid_dict = data_dict[coord]
+    for key in grid_dict:
+        num_features = grid_dict[key]
+        if num_features != 0:
+            data_set[coord][key] = num_features
+
+with open('OSM_test_dataset.pickle', 'wb') as handle:
+    pickle.dump(data_set, handle, protocol=pickle.HIGHEST_PROTOCOL)
+# for key in data:
+
+print(data_set)
 # print(coord_set)
+
+with open('OSM_test_dataset.pickle', 'rb') as handle:
+    extracted_data_set = pickle.load(handle)

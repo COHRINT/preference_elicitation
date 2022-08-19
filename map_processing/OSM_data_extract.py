@@ -50,7 +50,7 @@ overpass = Overpass()
 def fetch(city, typeOfRoad):
     areaId = nominatim.query(city).areaId()
     query = overpassQueryBuilder(area=areaId, elementType='way', selector='"highway"="' + typeOfRoad + '"', includeGeometry=True)
-    return overpass.query(query)
+    return overpass.query(query, timeout=120)
 
 
 # areaId = nominatim.query('Boulder, Colorado').areaId()

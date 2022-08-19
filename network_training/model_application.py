@@ -206,20 +206,45 @@ def show_user_interest(user_points, img_path, reference_model, gpu):
 
     # Flip max and min
     opportunity_vec = np.max(opportunity_vec)-opportunity_vec
+    # opportunity_vec = fudge_factor(opportunity_vec)
     # Plotting
     x = np.arange(0, PIL_image.width+input_size, input_size)
     y = np.arange(0, PIL_image.height+input_size, input_size)
     extent = np.min(x), np.max(x), np.min(y), np.max(y)
     im1 = plt.imshow(PIL_image, extent=extent)
     im2 = plt.imshow(opportunity_vec, cmap=plt.cm.plasma, alpha=.4, interpolation='spline36', extent=extent)  # spline36
+
+    # im2 = plt.imshow(opportunity_vec, cmap=plt.cm.plasma, alpha=.4, extent=extent)  # spline36
+    plt.colorbar(im2)
     u_x = [user_points[i][0] for i in range(len(user_points))]
     u_y = [new_height-user_points[i][1] for i in range(len(user_points))]
     im3 = plt.scatter(u_x, u_y, marker='x', c='purple')
     plt.show()
 
 
-# Reference user points
+def fudge_factor(vec):
+    # Res to junction
+    set = [[15,8],[16,8],[17, 8], [17,9], [18, 9], [19,9], [19,10], [19, 11], [20, 11], [21,11], [21, 12], [20, 12],[21, 13], [22, 13], [22, 14],
+    # South to junction
+           [30,5], [29, 6], [28, 6],[27,6], [26,6],[26,7], [25,7],[24,7], [24,8],[24,9],[24,10],[24,11],[24,12],[23,12],[23,11],[22,12], [22,13],
+    # Junction south boulder
+            [22,15], [21, 15], [21, 16], [22,16], [22,17], [22, 18], [21, 18], [20, 18], [20, 19], [19, 19], [19, 20], [18, 21],
+    # Final junction south boulder
+            [19, 21], [19, 22], [20,22], [22, 22],[21, 21],[22, 22], [22,23], [23,23],[23,24],[23,24], [22,25],[21,25],[20,26],[21,22],[20,27],[21,27],[22,27],
+    # south spit 1
+           [28,12], [27, 12], [26, 12], [26,13], [25,13], [24,13],
+    # south spit 2
+           [23,17],[24, 17], [24, 16], [25, 17], [25, 18], [26, 18],[25, 16], [25, 15], [26, 15],
+    # North Final Junction
+           [18, 20], [17, 20], [17, 19], [16, 19], [16, 18],[16,17], [15, 17], [15, 16], [14, 16]]
 
+    max_val = 0.65
+    for grid_point in set:
+        vec[grid_point[0], grid_point[1]] = max_val
+    return vec
+
+
+# Reference user points
 u_res_stream = [[928, 1454], [1002, 1454], [1043, 1389], [1178, 1439], [1387, 1206], [565, 1093]]
 u_res_trails = [[1282, 659], [1195, 711], [1319, 778], [1174, 893], [1329, 1072], [1274, 1513], [1756, 802]]
 u_res_shore = [[115, 572], [308, 582], [447, 772], [561, 826], [406, 946]]
@@ -238,8 +263,8 @@ u_eldo_cliffs_8x = [[292, 365], [458, 745], [672, 1386], [858, 1671], [593, 939]
 if __name__ == '__main__':
     # reference_img = "../images/Eldorado_town.jpeg"
     # reference_img = "../images/Reservoir@8.jpeg"
-
-    reference_img = "../images/Eldorado_town@8.jpeg"
+    reference_img = "../images/Reservoir.jpeg"
+    # reference_img = "../images/Eldorado_town@8.jpeg"
     model_save = "saved_models/_ExpLR0.8_0.0001_LVS150_nf32_b0.01.pth"
     # model_save = "saved_models/8x_res_ExpLR0.8_0.0001_LVS150_nf32_b0.1.pth"
     run_with_gpu = False
@@ -249,7 +274,7 @@ if __name__ == '__main__':
     # plt.imshow(res)
     # plt.show()
 
-    test_run = u_eldo_cliffs_8x
+    test_run = u_res_stream
     # u_points = extract_feature_vec(test_run, reference_img, model_save, False)
     # print(np.shape(u_points))
     show_user_interest(test_run, reference_img, model_save, run_with_gpu)

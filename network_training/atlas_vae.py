@@ -53,16 +53,16 @@ class VAE(nn.Module):
         #
         # self.e4 = nn.Conv2d(ndf * 4, ndf * 8, (4, 4), stride=2, padding=1)
         # self.bn4 = nn.BatchNorm2d(ndf * 8)
-        self.e1 = nn.Conv2d(nc, ndf, (3, 3), stride=2, padding=1)
+        self.e1 = nn.Conv2d(nc, ndf, (4, 4), stride=2, padding=1)
         self.bn1 = nn.BatchNorm2d(ndf)
 
-        self.e2 = nn.Conv2d(ndf, ndf * 2, (3, 3), stride=2, padding=1)
+        self.e2 = nn.Conv2d(ndf, ndf * 2, (4, 4), stride=2, padding=1)
         self.bn2 = nn.BatchNorm2d(ndf * 2)
 
-        self.e3 = nn.Conv2d(ndf * 2, ndf * 4, (3, 3), stride=2, padding=1)
+        self.e3 = nn.Conv2d(ndf * 2, ndf * 4, (4, 4), stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(ndf * 4)
 
-        self.e4 = nn.Conv2d(ndf * 4, ndf * 8, (3, 3), stride=2, padding=1)
+        self.e4 = nn.Conv2d(ndf * 4, ndf * 8, (4, 4), stride=2, padding=1)
         self.bn4 = nn.BatchNorm2d(ndf * 8)
 
         if self.img_sz == 32:
